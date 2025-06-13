@@ -16,8 +16,10 @@ import {StateLibrary} from "v4-periphery/lib/v4-core/src/libraries/StateLibrary.
 import {TickMath} from "v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import {Currency} from "v4-core/types/Currency.sol";
 import {IRampHookV1} from "./interfaces/IRampHookV1.sol";
+import {CurrencySettler} from "@uniswap/v4-core/test/utils/CurrencySettler.sol";
 
 contract RampHookV1 is BaseHook, Ownable {
+    using CurrencySettler for Currency;
     using StateLibrary for IPoolManager;
 
     // using FixedPointMathLib for uint256;
@@ -53,6 +55,14 @@ contract RampHookV1 is BaseHook, Ownable {
         }
         _;
     }
+
+    struct CallbackData {
+        SwapParams swapParams;
+        address receiver;
+        address sender;
+        PoolKey key;
+    }
+
     function getHookPermissions()
         public
         pure
@@ -89,6 +99,20 @@ contract RampHookV1 is BaseHook, Ownable {
         address receiver,
         PoolKey calldata key
     ) external onlyVault {
+        poolManager.unlock(
+            abi.encode(CallbackData(swapParams, receiver, msg.sender, key))
+        );
+    }
+
+    function unlockCallback(
+        bytes calldata data
+    ) external onlyPoolManager returns (bytes memory) {
+        CallbackData memory callbackData = abi.decode(data, (CallbackData));
+        SwapParams memory swapParams = callbackData.swapParams;
+        address receiver = callbackData.receiver;
+        address sender = callbackData.sender;
+        PoolKey memory key = callbackData.key;
+
         OnRampOrder memory newOrder = OnRampOrder({
             inputAmount: -swapParams.amountSpecified, //! lo estamos guardadon en positivo
             receiver: receiver,
@@ -97,17 +121,41 @@ contract RampHookV1 is BaseHook, Ownable {
 
         pendingOrders[key.toId()][swapParams.zeroForOne].push(newOrder); // esto esta en negativo
         if (swapParams.zeroForOne) {
-            IERC20Minimal(Currency.unwrap(key.currency0)).transferFrom(
-                msg.sender,
+            key.currency0.settle(
+                poolManager,
+                sender,
+                uint256(-swapParams.amountSpecified),
+                false
+            );
+            key.currency0.take(
+                poolManager,
                 address(this),
-                uint256(-swapParams.amountSpecified)
-            ); // transferimos USDC desde el vault al hook
+                uint256(-swapParams.amountSpecified),
+                true
+            );
+            // IERC20Minimal(Currency.unwrap(key.currency0)).transferFrom(
+            //     msg.sender,
+            //     address(this),
+            //     uint256(-swapParams.amountSpecified)
+            // ); // transferimos USDC desde el vault al hook
         } else if (!swapParams.zeroForOne) {
-            IERC20Minimal(Currency.unwrap(key.currency1)).transferFrom(
-                msg.sender,
+            key.currency1.settle(
+                poolManager,
+                sender,
+                uint256(-swapParams.amountSpecified),
+                false
+            );
+            key.currency1.take(
+                poolManager,
                 address(this),
-                uint256(-swapParams.amountSpecified)
-            ); // transferimos USDC desde el vault al hook
+                uint256(-swapParams.amountSpecified),
+                true
+            );
+            // IERC20Minimal(Currency.unwrap(key.currency1)).transferFrom(
+            //     msg.sender,
+            //     address(this),
+            //     uint256(-swapParams.amountSpecified)
+            // ); // transferimos USDC desde el vault al hook
         }
         emit OnRampOrderCreated(
             swapParams.zeroForOne,
@@ -115,6 +163,7 @@ contract RampHookV1 is BaseHook, Ownable {
             swapParams.amountSpecified
         );
     }
+
     // function beforeSwap(address sender, PoolKey calldata key, SwapParams calldata params, bytes calldata hookData)
     function _beforeSwap(
         address sender,
@@ -130,10 +179,9 @@ contract RampHookV1 is BaseHook, Ownable {
         //  * 4. si no son contrapartida, porque no hay un order Onramp entocnes que el swap se
         //  *  haga de forma normal.
         //  */
-        PoolId poolId = key.toId();
 
         //Obtain the pool price
-        (, int24 currentTick, , ) = poolManager.getSlot0(poolId);
+        (, int24 currentTick, , ) = poolManager.getSlot0(key.toId());
         uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(currentTick);
         // Convertir sqrtPriceX96 a un precio decimal (por ejemplo, Q64.96 a Q18)
         uint256 price = (uint256(sqrtPriceX96) * uint256(sqrtPriceX96)) /
@@ -142,37 +190,46 @@ contract RampHookV1 is BaseHook, Ownable {
 
         // bool oppositeDirection = !params.zeroForOne; //! vamos a buscar solo los orders opuestos al swap entrante
 
-        OnRampOrder[] storage _pendingOrders = pendingOrders[poolId][
-            !params.zeroForOne
-        ]; //! sacamos un array de OnRampOrder pendingOrders
-        if (_pendingOrders.length == 0) {
+        if (pendingOrders[key.toId()][!params.zeroForOne].length == 0) {
             return (
                 this.beforeSwap.selector,
                 BeforeSwapDeltaLibrary.ZERO_DELTA,
                 0
             );
         }
-        for (uint256 i = 0; i < _pendingOrders.length; i++) {
-            OnRampOrder storage order = _pendingOrders[i];
+        for (
+            uint256 i = 0;
+            i < pendingOrders[key.toId()][!params.zeroForOne].length;
+            i++
+        ) {
+            OnRampOrder storage order = pendingOrders[key.toId()][
+                !params.zeroForOne
+            ][i];
 
             if (!order.fulfilled) {
                 // int256 expectedOutput = (order.inputAmount * int256(price)) /
                 //     1e18; //!aqui puede estar mal
-                int256 expectedOutput = order.inputAmount;
-                console2.log("Esto es expectedOutput:", expectedOutput);
+                console2.log("Esto es expectedOutput:", order.inputAmount);
                 console2.log("Esto es order.inputAmount:", order.inputAmount);
                 console2.log(
                     "Esto es params.amountSpecified:",
                     -params.amountSpecified
                 );
 
-                if (-params.amountSpecified == expectedOutput) {
-                    int128 absInputAmount = int128(order.inputAmount);
-                    int128 absOutputAmount = int128(params.amountSpecified);
+                if (-params.amountSpecified == order.inputAmount) {
+                    int128 inputAmount = int128(order.inputAmount);
+                    int128 outputAmount = int128(params.amountSpecified);
 
                     BeforeSwapDelta beforeSwapDelta = toBeforeSwapDelta(
-                        absInputAmount,
-                        absOutputAmount
+                        inputAmount,
+                        outputAmount
+                    );
+
+                    _settleAndTake(
+                        key,
+                        params.zeroForOne,
+                        inputAmount,
+                        outputAmount
                     );
 
                     //!Should i transfer the tokens between them here??
@@ -194,6 +251,29 @@ contract RampHookV1 is BaseHook, Ownable {
         }
         console2.log("Estoy aqui");
         return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0); //sigue
+    }
+
+    function _settleAndTake(
+        PoolKey memory key,
+        bool zeroForOne,
+        int128 inputAmount,
+        int128 outputAmount
+    ) internal {
+        (Currency userSellToken, Currency userBuyToken) = zeroForOne
+            ? (key.currency0, key.currency1)
+            : (key.currency1, key.currency0);
+        userSellToken.take(
+            poolManager,
+            address(this),
+            uint256(uint128(inputAmount)),
+            true
+        );
+        userBuyToken.settle(
+            poolManager,
+            address(this),
+            uint256(uint128(-outputAmount)),
+            true
+        );
     }
 
     function setVault(address _vault) external onlyOwner {
