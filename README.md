@@ -5,7 +5,8 @@ First of all, thank you in advance for your time.
 
 Below is the structure of my project in version 1 — the simplest version I need in order to begin iterating and adding more features:
 
-![alt text](<../public/Screenshot 2025-06-13 at 15.55.38.png>)
+
+<img width="1264" alt="Screenshot 2025-06-13 at 15 55 38" src="https://github.com/user-attachments/assets/1da9f24c-b8e6-49f9-bf32-125deba8dd5a" />
 
 ## Goal
 The goal is to create orders inside the Hook, using my USDC liquidity and bypass the Uniswap v4 swap logic when a Swapper matches an order created by my Hook.
@@ -19,7 +20,9 @@ If no order is matched, then the Swapper proceeds with a normal swap using the l
 2. In the case of a CoW (Coincidence of Wants), I’m confused about when and how the token transfers between USER1 and USER2 should occur. Should this happen inside the beforeSwap() Hook?
 Here?
 
-![alt text](<../public/Screenshot 2025-06-13 at 17.13.21.png>)
+
+<img width="932" alt="Screenshot 2025-06-13 at 17 13 21" src="https://github.com/user-attachments/assets/ee017604-46f6-4fe9-ba12-738e1f757877" />
+
 
 
 ## Errors 
@@ -32,6 +35,5 @@ This happens because USER2 doesn't hold any USDC (fake ERC20) tokens.
 
 3. I encounter StackTooDeep errors. It doesn't allow me to use more local variables. I guess is becuase imports? how do i avoid that? 
 
-![alt text](<../public/Screenshot 2025-06-13 at 16.46.59.png>)
-
-![alt text](<../public/Screenshot 2025-06-13 at 17.21.18.png>)
+<img width="1348" alt="Screenshot 2025-06-13 at 17 21 18" src="https://github.com/user-attachments/assets/c17547af-c9aa-423c-a04e-e8ec2afa993b" />
+<img width="1529" alt="Screenshot 2025-06-13 at 16 46 59" src="https://github.com/user-attachments/assets/e2b90c05-be0b-46a3-99da-ead2b56a2d5c" />
