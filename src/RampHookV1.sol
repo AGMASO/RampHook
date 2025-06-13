@@ -15,7 +15,6 @@ import {SwapParams} from "v4-core/types/PoolOperation.sol";
 import {StateLibrary} from "v4-periphery/lib/v4-core/src/libraries/StateLibrary.sol";
 import {TickMath} from "v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import {Currency} from "v4-core/types/Currency.sol";
-import {IRampHookV1} from "./interfaces/IRampHookV1.sol";
 
 contract RampHookV1 is BaseHook, Ownable {
     using StateLibrary for IPoolManager;
@@ -35,7 +34,7 @@ contract RampHookV1 is BaseHook, Ownable {
         address receiver;
         bool fulfilled;
     }
-    //mapping que genera las pendignOrders
+    //mapping pendingOrders
     mapping(PoolId poolId => mapping(bool zeroForOne => OnRampOrder[]))
         public pendingOrders;
 
@@ -78,11 +77,9 @@ contract RampHookV1 is BaseHook, Ownable {
             });
     }
 
-    /** @notice This function should be called by Vault and in hee we need to:
+    /** @notice This function should be called by Vault and in here we need to:
      * 1: introduce the Liquidity to the pool
      * 2: update mappings to track the orders
-     * 3:
-     *
      */
     function createOnRampOrder(
         SwapParams calldata swapParams,
@@ -90,12 +87,13 @@ contract RampHookV1 is BaseHook, Ownable {
         PoolKey calldata key
     ) external onlyVault {
         OnRampOrder memory newOrder = OnRampOrder({
-            inputAmount: -swapParams.amountSpecified, //! lo estamos guardadon en positivo
+            inputAmount: -swapParams.amountSpecified, //! I'm saving this inputAmount as a positive sign number for a exactinput
             receiver: receiver,
             fulfilled: false
         });
 
-        pendingOrders[key.toId()][swapParams.zeroForOne].push(newOrder); // esto esta en negativo
+        pendingOrders[key.toId()][swapParams.zeroForOne].push(newOrder);
+        //Transfer USDC from the vault to the hook
         if (swapParams.zeroForOne) {
             IERC20Minimal(Currency.unwrap(key.currency0)).transferFrom(
                 msg.sender,
@@ -115,40 +113,39 @@ contract RampHookV1 is BaseHook, Ownable {
             swapParams.amountSpecified
         );
     }
-    // function beforeSwap(address sender, PoolKey calldata key, SwapParams calldata params, bytes calldata hookData)
+    //  /** Before Swap function
+    //  *  1. I need to determine which Order the swapper is executing.
+    //  *  2. Compare it with the stored order.
+    //  *  3. If they are counterparts, then I must create a BalanceSwapDelta
+    //  *  that suppresses the PM swap action.
+    //  *  4. If they are not counterparts, because there is no OnRamp order that conicides with the swap,
+    //  *  then the swap should proceed normally.
+    //  */
     function _beforeSwap(
         address sender,
         PoolKey calldata key,
         SwapParams calldata params,
         bytes calldata hookData
     ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
-        // /**
-        //  *  1. Tengo que sacar que Order esta haciendo el swapper
-        //  *  2. comparar con el order que tengo guardado
-        //  *  3. si son contrapartida, entocnes debo crear un BalanceSwapDelta que
-        //  *  suprima la accion de PM swap
-        //  * 4. si no son contrapartida, porque no hay un order Onramp entocnes que el swap se
-        //  *  haga de forma normal.
-        //  */
         PoolId poolId = key.toId();
 
         //Obtain the pool price
         (, int24 currentTick, , ) = poolManager.getSlot0(poolId);
         uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(currentTick);
-        // Convertir sqrtPriceX96 a un precio decimal (por ejemplo, Q64.96 a Q18)
         uint256 price = (uint256(sqrtPriceX96) * uint256(sqrtPriceX96)) /
             (1 << 192);
-        console2.log("Esto es el precio de la pool:", price); //! esto es un precio Q64.96, lo convertimos a Q18
+        console2.log("This is the pool price:", price); //! this is a Q64.96 price, we convert it to Q18
 
-        // bool oppositeDirection = !params.zeroForOne; //! vamos a buscar solo los orders opuestos al swap entrante
+        //!I get Stack too deep errors. Im blocked to use more local variables, any solution??
+        // bool oppositeDirection = !params.zeroForOne;
 
         OnRampOrder[] storage _pendingOrders = pendingOrders[poolId][
             !params.zeroForOne
-        ]; //! sacamos un array de OnRampOrder pendingOrders
+        ]; //pull all the orders that are oposite direction to the swap by the user
         if (_pendingOrders.length == 0) {
             return (
                 this.beforeSwap.selector,
-                BeforeSwapDeltaLibrary.ZERO_DELTA,
+                BeforeSwapDeltaLibrary.ZERO_DELTA, //!Is that correct??
                 0
             );
         }
@@ -157,12 +154,12 @@ contract RampHookV1 is BaseHook, Ownable {
 
             if (!order.fulfilled) {
                 // int256 expectedOutput = (order.inputAmount * int256(price)) /
-                //     1e18; //!aqui puede estar mal
-                int256 expectedOutput = order.inputAmount;
-                console2.log("Esto es expectedOutput:", expectedOutput);
-                console2.log("Esto es order.inputAmount:", order.inputAmount);
+                //     1e18;
+                int256 expectedOutput = order.inputAmount; //! For testing Purposes of version, we assume 1:1
+                console2.log("This is expectedOutput:", expectedOutput);
+                console2.log("This is order.inputAmount:", order.inputAmount);
                 console2.log(
-                    "Esto es params.amountSpecified:",
+                    "This is params.amountSpecified:",
                     -params.amountSpecified
                 );
 
@@ -192,8 +189,8 @@ contract RampHookV1 is BaseHook, Ownable {
                 }
             }
         }
-        console2.log("Estoy aqui");
-        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0); //sigue
+
+        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 
     function setVault(address _vault) external onlyOwner {

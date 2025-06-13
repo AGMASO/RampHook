@@ -135,12 +135,6 @@ contract RampHookTest is Test, Deployers {
             key
         );
         assert(vault.rampHooks(PoolId.unwrap(key.toId())) == address(hook));
-        // assert(
-        //     vault.poolKeysByTokenPair(
-        //         Currency.unwrap(currency0),
-        //         Currency.unwrap(currency1)
-        //     ) == key
-        // );
 
         vm.prank(address(vault));
         IERC20Minimal(Currency.unwrap(key.currency0)).approve(
@@ -167,12 +161,7 @@ contract RampHookTest is Test, Deployers {
             s_key.currency1.balanceOf(USER)
         );
 
-        // struct OnrampData {
-        //     uint256 amount;
-        //     address receiverAddress;
-        //     address desiredToken;
-        // }
-
+        //!OnRampOrder  which sends 200 USDC to Hook and creates an order
         Vault.OnrampData memory onRampData = Vault.OnrampData({
             amount: 200e18, // 200 USDC
             receiverAddress: USER,
@@ -189,8 +178,7 @@ contract RampHookTest is Test, Deployers {
             "USER currency1 balance after onramp: %s",
             s_key.currency1.balanceOf(USER)
         );
-        // mapping(PoolId poolId => mapping(bool zeroForOne => OnRampOrder[]))
-        // public pendingOrders;
+
         RampHookV1.OnRampOrder[] memory pendingOrders = hook.getPendingOrders(
             s_key.toId(),
             false
@@ -208,6 +196,7 @@ contract RampHookTest is Test, Deployers {
             address(swapRouter),
             400e18
         );
+        //! Swap sended by a USER2 to get 200 USDC selling 200 Token0 and is matching the order already there.
         swapRouter.swap(
             key,
             SwapParams({
