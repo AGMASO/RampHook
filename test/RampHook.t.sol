@@ -154,17 +154,25 @@ contract RampHookTest is Test, Deployers {
         );
     }
 
-    function test_onRamp() public {
+    function test_onRampMatchedOrders() public {
         deal(Currency.unwrap(s_key.currency1), USER, 3000 ether);
         vm.prank(USER);
         s_key.currency1.transfer(address(vault), 3000 ether);
         console2.log(
-            "USER currency0 balance before onramp: %s",
-            s_key.currency0.balanceOf(USER)
+            "Vault currency0 balance before onramp: %s",
+            s_key.currency0.balanceOf(address(vault))
         );
         console2.log(
-            "USER currency1 balance before onramp: %s",
-            s_key.currency1.balanceOf(USER)
+            "Vault currency1 balance before onramp: %s",
+            s_key.currency1.balanceOf(address(vault))
+        );
+        console2.log(
+            "PM currency0 balance before onramp: %s",
+            s_key.currency0.balanceOf(address(manager))
+        );
+        console2.log(
+            "PM currency1 balance before onramp: %s",
+            s_key.currency1.balanceOf(address(manager))
         );
 
         // struct OnrampData {
@@ -182,13 +190,38 @@ contract RampHookTest is Test, Deployers {
         vault.onramp(onRampData);
         vm.stopPrank();
         console2.log(
-            "USER currency0 balance after onramp: %s",
-            s_key.currency0.balanceOf(USER)
+            "Hook currency0 balance after onramp: %s",
+            s_key.currency0.balanceOf(address(hook))
         );
         console2.log(
-            "USER currency1 balance after onramp: %s",
-            s_key.currency1.balanceOf(USER)
+            "Hook currency1 balance after onramp: %s",
+            s_key.currency1.balanceOf(address(hook))
         );
+        console2.log(
+            "Vault currency0 balance after onramp: %s",
+            s_key.currency0.balanceOf(address(vault))
+        );
+        console2.log(
+            "Vault currency1 balance after onramp: %s",
+            s_key.currency1.balanceOf(address(vault))
+        );
+        console2.log(
+            "PM currency0 balance after onramp: %s",
+            s_key.currency0.balanceOf(address(manager))
+        );
+        console2.log(
+            "PM currency1 balance after onramp: %s",
+            s_key.currency1.balanceOf(address(manager))
+        );
+        console2.log(
+            "HOOK Claims0 balance after onramp: %s",
+            manager.balanceOf(address(hook), s_key.currency0.toId())
+        );
+        console2.log(
+            "HOOK Claims1 balance after onramp: %s",
+            manager.balanceOf(address(hook), s_key.currency1.toId())
+        );
+
         // mapping(PoolId poolId => mapping(bool zeroForOne => OnRampOrder[]))
         // public pendingOrders;
         RampHookV1.OnRampOrder[] memory pendingOrders = hook.getPendingOrders(
@@ -203,10 +236,18 @@ contract RampHookTest is Test, Deployers {
             settleUsingBurn: false
         });
         vm.startPrank(USER2);
-        deal(Currency.unwrap(s_key.currency0), USER2, 300e18);
+        deal(Currency.unwrap(s_key.currency0), USER2, 200e18);
         IERC20Minimal(Currency.unwrap(s_key.currency0)).approve(
             address(swapRouter),
             400e18
+        );
+        console2.log(
+            "USER2 balance before swap matched: %s",
+            s_key.currency0.balanceOf(USER2)
+        );
+        console2.log(
+            "USER2 balance before swap matched: %s",
+            s_key.currency1.balanceOf(USER2)
         );
         swapRouter.swap(
             key,
@@ -229,24 +270,236 @@ contract RampHookTest is Test, Deployers {
             address(hook)
         );
         console2.log(
-            "Hook balance after token1 swap: %s",
-            hookBalanceAfterToken1
+            "Hook currency0 balance after swap matched: %s",
+            s_key.currency0.balanceOf(address(hook))
         );
         console2.log(
-            "USER currency0 balance after swap: %s",
+            "Hook currency1 balance after swap matched: %s",
+            s_key.currency1.balanceOf(address(hook))
+        );
+        console2.log(
+            "Vault currency0 balance after swap matched: %s",
+            s_key.currency0.balanceOf(address(vault))
+        );
+        console2.log(
+            "Vault currency1 balance after swap matched: %s",
+            s_key.currency1.balanceOf(address(vault))
+        );
+        console2.log(
+            "PM currency0 balance after swap matched: %s",
+            s_key.currency0.balanceOf(address(manager))
+        );
+        console2.log(
+            "PM currency1 balance after swap matched: %s",
+            s_key.currency1.balanceOf(address(manager))
+        );
+        console2.log(
+            "HOOK Claims0 balance after swap matched: %s",
+            manager.balanceOf(address(hook), s_key.currency0.toId())
+        );
+        console2.log(
+            "HOOK Claims1 balance after swap matched: %s",
+            manager.balanceOf(address(hook), s_key.currency1.toId())
+        );
+
+        console2.log(
+            "USER1 balance after swap matched: %s",
             s_key.currency0.balanceOf(USER)
         );
         console2.log(
-            "USER currency1 balance after swap: %s",
+            "USER1 balance after swap matched: %s",
             s_key.currency1.balanceOf(USER)
         );
         console2.log(
-            "USER2 currency0 balance after swap: %s",
+            "USER2 balance after swap matched: %s",
             s_key.currency0.balanceOf(USER2)
         );
         console2.log(
-            "USER2 currency1 balance after swap: %s",
+            "USER2 balance after swap matched: %s",
             s_key.currency1.balanceOf(USER2)
+        );
+        console2.log(
+            "Hook balance of TOken0 after swap matched: %s",
+            s_key.currency0.balanceOf(address(hook))
+        );
+        console2.log(
+            "Hook balance of TOken1 after swap matched: %s",
+            s_key.currency1.balanceOf(address(hook))
+        );
+        vm.stopPrank();
+    }
+
+    function test_onRampNoMatchNormalSwap() public {
+        deal(Currency.unwrap(s_key.currency1), USER, 3000 ether);
+        vm.prank(USER);
+        s_key.currency1.transfer(address(vault), 3000 ether);
+        console2.log(
+            "Vault currency0 balance before onramp: %s",
+            s_key.currency0.balanceOf(address(vault))
+        );
+        console2.log(
+            "Vault currency1 balance before onramp: %s",
+            s_key.currency1.balanceOf(address(vault))
+        );
+        console2.log(
+            "PM currency0 balance before onramp: %s",
+            s_key.currency0.balanceOf(address(manager))
+        );
+        console2.log(
+            "PM currency1 balance before onramp: %s",
+            s_key.currency1.balanceOf(address(manager))
+        );
+
+        // struct OnrampData {
+        //     uint256 amount;
+        //     address receiverAddress;
+        //     address desiredToken;
+        // }
+
+        // Vault.OnrampData memory onRampData = Vault.OnrampData({
+        //     amount: 200e18, // 200 USDC
+        //     receiverAddress: USER,
+        //     desiredToken: Currency.unwrap(s_key.currency0)
+        // });
+
+        // vault.onramp(onRampData);
+        // vm.stopPrank();
+        // console2.log(
+        //     "Hook currency0 balance after onramp: %s",
+        //     s_key.currency0.balanceOf(address(hook))
+        // );
+        // console2.log(
+        //     "Hook currency1 balance after onramp: %s",
+        //     s_key.currency1.balanceOf(address(hook))
+        // );
+        // console2.log(
+        //     "Vault currency0 balance after onramp: %s",
+        //     s_key.currency0.balanceOf(address(vault))
+        // );
+        // console2.log(
+        //     "Vault currency1 balance after onramp: %s",
+        //     s_key.currency1.balanceOf(address(vault))
+        // );
+        // console2.log(
+        //     "PM currency0 balance after onramp: %s",
+        //     s_key.currency0.balanceOf(address(manager))
+        // );
+        // console2.log(
+        //     "PM currency1 balance after onramp: %s",
+        //     s_key.currency1.balanceOf(address(manager))
+        // );
+        // console2.log(
+        //     "HOOK Claims0 balance after onramp: %s",
+        //     manager.balanceOf(address(hook), s_key.currency0.toId())
+        // );
+        // console2.log(
+        //     "HOOK Claims1 balance after onramp: %s",
+        //     manager.balanceOf(address(hook), s_key.currency1.toId())
+        // );
+
+        // // mapping(PoolId poolId => mapping(bool zeroForOne => OnRampOrder[]))
+        // // public pendingOrders;
+        // RampHookV1.OnRampOrder[] memory pendingOrders = hook.getPendingOrders(
+        //     s_key.toId(),
+        //     false
+        // );
+        // assertEq(pendingOrders.length, 1, "Pending orders length should be 1");
+
+        /// Enviar un Swap desde otro User para matchear el pedido
+        PoolSwapTest.TestSettings memory settings = PoolSwapTest.TestSettings({
+            takeClaims: false,
+            settleUsingBurn: false
+        });
+        vm.startPrank(USER2);
+        deal(Currency.unwrap(s_key.currency0), USER2, 200e18);
+        IERC20Minimal(Currency.unwrap(s_key.currency0)).approve(
+            address(swapRouter),
+            400e18
+        );
+        console2.log(
+            "USER2 balance before swap matched: %s",
+            s_key.currency0.balanceOf(USER2)
+        );
+        console2.log(
+            "USER2 balance before swap matched: %s",
+            s_key.currency1.balanceOf(USER2)
+        );
+        swapRouter.swap(
+            key,
+            SwapParams({
+                zeroForOne: false,
+                amountSpecified: -200e18,
+                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
+            }),
+            settings,
+            ZERO_BYTES
+        );
+        uint256 hookBalanceAfterToken0 = s_key.currency0.balanceOf(
+            address(hook)
+        );
+        console2.log(
+            "Hook balance after token0 swap: %s",
+            hookBalanceAfterToken0
+        );
+        uint256 hookBalanceAfterToken1 = s_key.currency1.balanceOf(
+            address(hook)
+        );
+        console2.log(
+            "Hook currency0 balance after swap matched: %s",
+            s_key.currency0.balanceOf(address(hook))
+        );
+        console2.log(
+            "Hook currency1 balance after swap matched: %s",
+            s_key.currency1.balanceOf(address(hook))
+        );
+        console2.log(
+            "Vault currency0 balance after swap matched: %s",
+            s_key.currency0.balanceOf(address(vault))
+        );
+        console2.log(
+            "Vault currency1 balance after swap matched: %s",
+            s_key.currency1.balanceOf(address(vault))
+        );
+        console2.log(
+            "PM currency0 balance after swap matched: %s",
+            s_key.currency0.balanceOf(address(manager))
+        );
+        console2.log(
+            "PM currency1 balance after swap matched: %s",
+            s_key.currency1.balanceOf(address(manager))
+        );
+        console2.log(
+            "HOOK Claims0 balance after swap matched: %s",
+            manager.balanceOf(address(hook), s_key.currency0.toId())
+        );
+        console2.log(
+            "HOOK Claims1 balance after swap matched: %s",
+            manager.balanceOf(address(hook), s_key.currency1.toId())
+        );
+
+        console2.log(
+            "USER1 balance after swap matched: %s",
+            s_key.currency0.balanceOf(USER)
+        );
+        console2.log(
+            "USER1 balance after swap matched: %s",
+            s_key.currency1.balanceOf(USER)
+        );
+        console2.log(
+            "USER2 balance after swap matched: %s",
+            s_key.currency0.balanceOf(USER2)
+        );
+        console2.log(
+            "USER2 balance after swap matched: %s",
+            s_key.currency1.balanceOf(USER2)
+        );
+        console2.log(
+            "Hook balance of TOken0 after swap matched: %s",
+            s_key.currency0.balanceOf(address(hook))
+        );
+        console2.log(
+            "Hook balance of TOken1 after swap matched: %s",
+            s_key.currency1.balanceOf(address(hook))
         );
         vm.stopPrank();
     }

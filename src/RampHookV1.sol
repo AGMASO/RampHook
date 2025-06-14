@@ -121,23 +121,22 @@ contract RampHookV1 is BaseHook, Ownable {
 
         pendingOrders[key.toId()][swapParams.zeroForOne].push(newOrder); // esto esta en negativo
         if (swapParams.zeroForOne) {
+            // function settle(Currency currency, IPoolManager manager, address payer, uint256 amount, bool burn) internal {
+            //!aqui estamos enviano Token0 al PM en el caso de que sea zeroForOne
             key.currency0.settle(
                 poolManager,
                 sender,
                 uint256(-swapParams.amountSpecified),
                 false
             );
+            // function take(Currency currency, IPoolManager manager, address recipient, uint256 amount, bool claims) internal {
+            //! Estamos dando Claims TOkens por los tokens enviados al Hook
             key.currency0.take(
                 poolManager,
                 address(this),
                 uint256(-swapParams.amountSpecified),
                 true
             );
-            // IERC20Minimal(Currency.unwrap(key.currency0)).transferFrom(
-            //     msg.sender,
-            //     address(this),
-            //     uint256(-swapParams.amountSpecified)
-            // ); // transferimos USDC desde el vault al hook
         } else if (!swapParams.zeroForOne) {
             key.currency1.settle(
                 poolManager,
@@ -151,11 +150,6 @@ contract RampHookV1 is BaseHook, Ownable {
                 uint256(-swapParams.amountSpecified),
                 true
             );
-            // IERC20Minimal(Currency.unwrap(key.currency1)).transferFrom(
-            //     msg.sender,
-            //     address(this),
-            //     uint256(-swapParams.amountSpecified)
-            // ); // transferimos USDC desde el vault al hook
         }
         emit OnRampOrderCreated(
             swapParams.zeroForOne,
@@ -229,20 +223,9 @@ contract RampHookV1 is BaseHook, Ownable {
                         key,
                         params.zeroForOne,
                         inputAmount,
-                        outputAmount
+                        outputAmount,
+                        order.receiver
                     );
-
-                    //!Should i transfer the tokens between them here??
-                    // IERC20Minimal(Currency.unwrap(key.currency0)).transferFrom(
-                    //     sender,
-                    //     address(this),
-                    //     uint256(params.amountSpecified)
-                    // );
-
-                    // IERC20Minimal(Currency.unwrap(key.currency1)).transfer(
-                    //     order.receiver,
-                    //     uint256(order.inputAmount)
-                    // );
 
                     order.fulfilled = true;
                     return (this.beforeSwap.selector, beforeSwapDelta, 0);
@@ -257,24 +240,66 @@ contract RampHookV1 is BaseHook, Ownable {
         PoolKey memory key,
         bool zeroForOne,
         int128 inputAmount,
-        int128 outputAmount
+        int128 outputAmount,
+        address onRamperReceiver
     ) internal {
         (Currency userSellToken, Currency userBuyToken) = zeroForOne
             ? (key.currency0, key.currency1)
             : (key.currency1, key.currency0);
+        //! se acunan claimsTokens0 al Hook
         userSellToken.take(
             poolManager,
             address(this),
             uint256(uint128(inputAmount)),
             true
         );
+        //!Quema los claimtoknes1 de Hook.
         userBuyToken.settle(
             poolManager,
             address(this),
             uint256(uint128(-outputAmount)),
             true
         );
+
+        //!transfiere los Tokens0 al Hook, luego debemos settle y luego enviamdo del hook al user1
+        userSellToken.take(
+            poolManager,
+            address(this),
+            uint256(uint128(-outputAmount)),
+            false
+        );
+        userSellToken.settle(
+            poolManager,
+            address(this),
+            uint256(uint128(-outputAmount)),
+            true
+        );
+        IERC20Minimal(Currency.unwrap(userSellToken)).transfer(
+            onRamperReceiver,
+            uint256(uint128(-outputAmount))
+        );
     }
+    // function _claimAndTransfer(
+    //     PoolKey memory key,
+    //     bool zeroForOne,
+    //     address user,
+    //     uint256 amount
+    // ) internal {
+    //     (Currency userSellToken, Currency userBuyToken) = zeroForOne
+    //         ? (key.currency0, key.currency1)
+    //         : (key.currency1, key.currency0);
+    //     userSellToken.settle(
+    //         poolManager,
+    //         address(this),
+    //         amount,
+    //         false // No quemar, transferir los Token0
+    //     );
+
+    // Transferir los Token0 al USER1
+    //     IERC20Minimal(Currency.unwrap(userSellToken)).transfer(user, amount);
+
+    //     console2.log("Transferidos %s Token0 al usuario %s", amount, user);
+    // }
 
     function setVault(address _vault) external onlyOwner {
         require(_vault != address(0), "Vault address cannot be zero");
