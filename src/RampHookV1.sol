@@ -261,7 +261,7 @@ contract RampHookV1 is BaseHook, Ownable {
             true
         );
 
-        //!transfiere los Tokens0 al Hook, luego debemos settle y luego enviamdo del hook al user1
+        //!Transfers Token0 to the Hook, then we settle and finally send from the Hook to user1
         userSellToken.take(
             poolManager,
             address(this),
@@ -279,27 +279,6 @@ contract RampHookV1 is BaseHook, Ownable {
             uint256(uint128(-outputAmount))
         );
     }
-    // function _claimAndTransfer(
-    //     PoolKey memory key,
-    //     bool zeroForOne,
-    //     address user,
-    //     uint256 amount
-    // ) internal {
-    //     (Currency userSellToken, Currency userBuyToken) = zeroForOne
-    //         ? (key.currency0, key.currency1)
-    //         : (key.currency1, key.currency0);
-    //     userSellToken.settle(
-    //         poolManager,
-    //         address(this),
-    //         amount,
-    //         false // No quemar, transferir los Token0
-    //     );
-
-    // Transferir los Token0 al USER1
-    //     IERC20Minimal(Currency.unwrap(userSellToken)).transfer(user, amount);
-
-    //     console2.log("Transferidos %s Token0 al usuario %s", amount, user);
-    // }
 
     function setVault(address _vault) external onlyOwner {
         require(_vault != address(0), "Vault address cannot be zero");
