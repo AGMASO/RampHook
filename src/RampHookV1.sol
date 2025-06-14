@@ -232,8 +232,6 @@ contract RampHookV1 is BaseHook, Ownable {
                 }
             }
         }
-        console2.log("Estoy aqui");
-        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0); //sigue
     }
 
     function _settleAndTake(
