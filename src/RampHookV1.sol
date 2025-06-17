@@ -17,10 +17,14 @@ import {TickMath} from "v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import {Currency} from "v4-core/types/Currency.sol";
 import {IRampHookV1} from "./interfaces/IRampHookV1.sol";
 import {CurrencySettler} from "@uniswap/v4-core/test/utils/CurrencySettler.sol";
+import {LPFeeLibrary} from "v4-core/libraries/LPFeeLibrary.sol";
 
 contract RampHookV1 is BaseHook, Ownable {
+    error RampHook_MustUseDynamicFee();
+
     using CurrencySettler for Currency;
     using StateLibrary for IPoolManager;
+    using LPFeeLibrary for uint24;
 
     // using FixedPointMathLib for uint256;
 
@@ -71,7 +75,7 @@ contract RampHookV1 is BaseHook, Ownable {
     {
         return
             Hooks.Permissions({
-                beforeInitialize: false,
+                beforeInitialize: true,
                 afterInitialize: false,
                 beforeAddLiquidity: false,
                 afterAddLiquidity: false,
@@ -88,12 +92,23 @@ contract RampHookV1 is BaseHook, Ownable {
             });
     }
 
+    function _beforeInitialize(
+        address,
+        PoolKey calldata key,
+        uint160
+    ) internal pure override returns (bytes4) {
+        // `.isDynamicFee()` function comes from using
+        // the `LPFeeLibrary` for `uint24`
+        if (!key.fee.isDynamicFee()) revert RampHook_MustUseDynamicFee();
+        return this.beforeInitialize.selector;
+    }
     /** @notice This function should be called by Vault and in hee we need to:
      * 1: introduce the Liquidity to the pool
      * 2: update mappings to track the orders
      * 3:
      *
      */
+
     function createOnRampOrder(
         SwapParams calldata swapParams,
         address receiver,
@@ -244,103 +259,6 @@ contract RampHookV1 is BaseHook, Ownable {
         expectedOutput = (_amountSpecified * int256(_price));
     }
 
-    //!la mierda que he hecho yo.
-    // function _matchOrders(
-    //     PoolKey calldata key,
-    //     SwapParams calldata params,
-    //     int256 expectedOut
-    // ) private returns (bytes4, BeforeSwapDelta, uint24) {
-    //     bool oppositeDirection = !params.zeroForOne;
-    //     OnRampOrder[] storage orders = pendingOrders[key.toId()][
-    //         oppositeDirection
-    //     ];
-
-    //     if (orders.length == 0) {
-    //         return (
-    //             this.beforeSwap.selector,
-    //             BeforeSwapDeltaLibrary.ZERO_DELTA,
-    //             0
-    //         );
-    //     }
-
-    //     int256 remainingOut = expectedOut;
-    //     int256 remainingInputToken = -params.amountSpecified;
-    //     bool movedInternally;
-
-    //     for (uint256 i = 0; i < orders.length; i++) {
-    //         OnRampOrder storage order = orders[i];
-    //         if (order.fulfilled) continue;
-
-    //         if (remainingOut == order.inputAmount) {
-    //             int128 inputAmount = int128(order.inputAmount);
-    //             int128 outputAmount = int128(params.amountSpecified);
-
-    //             BeforeSwapDelta beforeSwapDelta = toBeforeSwapDelta(
-    //                 inputAmount,
-    //                 outputAmount
-    //             );
-
-    //             _settleAndTake(
-    //                 key,
-    //                 params.zeroForOne,
-    //                 inputAmount,
-    //                 outputAmount,
-    //                 order.receiver
-    //             );
-    //             movedInternally = true; //!Alert
-    //             order.fulfilled = true;
-    //             return (this.beforeSwap.selector, beforeSwapDelta, 0);
-    //         } else if (remainingOut > order.inputAmount) {
-    //             // 2 – el swap cubre la orden por completo y sobra
-    //             console2.log("Estoy en mayor que tu");
-    //             int128 inPart = int128(
-    //                 (order.inputAmount * -params.amountSpecified) / expectedOut
-    //             );
-    //             int128 outPart = int128(-order.inputAmount);
-    //             _settleAndTake(
-    //                 key,
-    //                 params.zeroForOne,
-    //                 inPart,
-    //                 outPart,
-    //                 order.receiver
-    //             );
-    //             remainingOut -= order.inputAmount; // sigue habiendo output a casar
-    //             remainingInputToken -= inPart; // resta el input que se ha casado
-    //             movedInternally = true; //!Alert
-    //             order.fulfilled = true;
-    //             // seguimos el loop
-    //         } else if (remainingOut < order.inputAmount) {
-    //             // 3 – la orden es mayor que el swap ⇒ cubrimos sólo parte
-    //             BeforeSwapDelta deltaWhenLessThan = toBeforeSwapDelta(
-    //                 int128(remainingInputToken),
-    //                 int128(-remainingOut)
-    //             );
-    //             return (this.beforeSwap.selector, deltaWhenLessThan, 0);
-    //         }
-
-    //         BeforeSwapDelta deltaPartial = toBeforeSwapDelta(
-    //             int128(remainingInputToken),
-    //             int128(-remainingOut)
-    //         );
-    //         return (this.beforeSwap.selector, deltaPartial, 0);
-    //     }
-
-    //     if (movedInternally) {
-    //         // El Hook ya movió todos los tokens que debía → núcleo no debe hacer nada
-    //         return (
-    //             this.beforeSwap.selector,
-    //             BeforeSwapDeltaLibrary.ZERO_DELTA,
-    //             0
-    //         );
-    //     }
-
-    //     // Queda input sin casar y no hemos hecho transferencias internas
-    //     BeforeSwapDelta deltaRestante = toBeforeSwapDelta(
-    //         int128(remainingInputToken),
-    //         int128(-remainingOut)
-    //     );
-    //     return (this.beforeSwap.selector, deltaRestante, 0);
-    // }
     //! Lo que funciona...
     function _matchOrders(
         PoolKey calldata key,
@@ -386,6 +304,8 @@ contract RampHookV1 is BaseHook, Ownable {
             ? BeforeSwapDeltaLibrary.ZERO_DELTA
             : toBeforeSwapDelta(int128(matched0), int128(matched1));
 
-        return (this.beforeSwap.selector, deltaHook, 0);
+        uint24 fee = matched0 == 0 ? 5000 : 60000;
+        uint24 feeWithFlag = fee | LPFeeLibrary.OVERRIDE_FEE_FLAG;
+        return (this.beforeSwap.selector, deltaHook, feeWithFlag);
     }
 }

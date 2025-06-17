@@ -18,6 +18,7 @@ import {ModifyLiquidityParams, SwapParams} from "v4-core/types/PoolOperation.sol
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 import {RampHookV1} from "../src/RampHookV1.sol";
 import {Vault} from "../src/Vault.sol";
+import {LPFeeLibrary} from "v4-core/libraries/LPFeeLibrary.sol";
 
 import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
 
@@ -71,7 +72,9 @@ contract RampHookTest is Test, Deployers {
 
         address hookAddress = address(
             uint160(
-                Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG
+                Hooks.BEFORE_INITIALIZE_FLAG |
+                    Hooks.BEFORE_SWAP_FLAG |
+                    Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG
             )
         );
         deployCodeTo(
@@ -81,7 +84,13 @@ contract RampHookTest is Test, Deployers {
         );
         hook = RampHookV1(hookAddress);
 
-        (key, ) = initPool(currency0, currency1, hook, 3000, SQRT_PRICE_1_1);
+        (key, ) = initPool(
+            currency0,
+            currency1,
+            hook,
+            LPFeeLibrary.DYNAMIC_FEE_FLAG,
+            SQRT_PRICE_1_1
+        );
         s_key = key;
         // Add some initial liquidity through the custom `addLiquidity` function
         IERC20Minimal(Currency.unwrap(key.currency0)).approve(
