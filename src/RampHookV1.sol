@@ -165,73 +165,15 @@ contract RampHookV1 is BaseHook, Ownable {
         SwapParams calldata params,
         bytes calldata hookData
     ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
-        // /**
-        //  *  1. Tengo que sacar que Order esta haciendo el swapper
-        //  *  2. comparar con el order que tengo guardado
-        //  *  3. si son contrapartida, entocnes debo crear un BalanceSwapDelta que
-        //  *  suprima la accion de PM swap
-        //  * 4. si no son contrapartida, porque no hay un order Onramp entocnes que el swap se
-        //  *  haga de forma normal.
-        //  */
-
         //Obtain the pool price
         (, int24 currentTick, , ) = poolManager.getSlot0(key.toId());
-        uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(currentTick);
-        // Convertir sqrtPriceX96 a un precio decimal (por ejemplo, Q64.96 a Q18)
-        uint256 price = (uint256(sqrtPriceX96) * uint256(sqrtPriceX96)) /
-            (1 << 192);
+        uint256 price = _tickToPrice(currentTick);
         console2.log("Esto es el precio de la pool:", price); //! esto es un precio Q64.96, lo convertimos a Q18
-
+        int256 expectedOut = _getExpectedOutput(-params.amountSpecified, price);
+        console2.log("Esto es el expectedOutput del swap:", expectedOut);
         // bool oppositeDirection = !params.zeroForOne; //! vamos a buscar solo los orders opuestos al swap entrante
 
-        if (pendingOrders[key.toId()][!params.zeroForOne].length == 0) {
-            return (
-                this.beforeSwap.selector,
-                BeforeSwapDeltaLibrary.ZERO_DELTA,
-                0
-            );
-        }
-        for (
-            uint256 i = 0;
-            i < pendingOrders[key.toId()][!params.zeroForOne].length;
-            i++
-        ) {
-            OnRampOrder storage order = pendingOrders[key.toId()][
-                !params.zeroForOne
-            ][i];
-
-            if (!order.fulfilled) {
-                // int256 expectedOutput = (order.inputAmount * int256(price)) /
-                //     1e18; //!aqui puede estar mal
-                console2.log("Esto es expectedOutput:", order.inputAmount);
-                console2.log("Esto es order.inputAmount:", order.inputAmount);
-                console2.log(
-                    "Esto es params.amountSpecified:",
-                    -params.amountSpecified
-                );
-
-                if (-params.amountSpecified == order.inputAmount) {
-                    int128 inputAmount = int128(order.inputAmount);
-                    int128 outputAmount = int128(params.amountSpecified);
-
-                    BeforeSwapDelta beforeSwapDelta = toBeforeSwapDelta(
-                        inputAmount,
-                        outputAmount
-                    );
-
-                    _settleAndTake(
-                        key,
-                        params.zeroForOne,
-                        inputAmount,
-                        outputAmount,
-                        order.receiver
-                    );
-
-                    order.fulfilled = true;
-                    return (this.beforeSwap.selector, beforeSwapDelta, 0);
-                }
-            }
-        }
+        return _matchOrders(key, params, expectedOut);
     }
 
     function _settleAndTake(
@@ -288,5 +230,162 @@ contract RampHookV1 is BaseHook, Ownable {
         bool zeroForOne
     ) external view returns (OnRampOrder[] memory) {
         return pendingOrders[poolId][zeroForOne];
+    }
+    function _tickToPrice(int24 currentTick) public pure returns (uint256) {
+        uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(currentTick);
+        // Convertir sqrtPriceX96 a un precio decimal (por ejemplo, Q64.96 a Q18)
+        return (uint256(sqrtPriceX96) * uint256(sqrtPriceX96)) / (1 << 192);
+    }
+
+    function _getExpectedOutput(
+        int256 _amountSpecified,
+        uint256 _price
+    ) private pure returns (int256 expectedOutput) {
+        expectedOutput = (_amountSpecified * int256(_price));
+    }
+
+    //!la mierda que he hecho yo.
+    // function _matchOrders(
+    //     PoolKey calldata key,
+    //     SwapParams calldata params,
+    //     int256 expectedOut
+    // ) private returns (bytes4, BeforeSwapDelta, uint24) {
+    //     bool oppositeDirection = !params.zeroForOne;
+    //     OnRampOrder[] storage orders = pendingOrders[key.toId()][
+    //         oppositeDirection
+    //     ];
+
+    //     if (orders.length == 0) {
+    //         return (
+    //             this.beforeSwap.selector,
+    //             BeforeSwapDeltaLibrary.ZERO_DELTA,
+    //             0
+    //         );
+    //     }
+
+    //     int256 remainingOut = expectedOut;
+    //     int256 remainingInputToken = -params.amountSpecified;
+    //     bool movedInternally;
+
+    //     for (uint256 i = 0; i < orders.length; i++) {
+    //         OnRampOrder storage order = orders[i];
+    //         if (order.fulfilled) continue;
+
+    //         if (remainingOut == order.inputAmount) {
+    //             int128 inputAmount = int128(order.inputAmount);
+    //             int128 outputAmount = int128(params.amountSpecified);
+
+    //             BeforeSwapDelta beforeSwapDelta = toBeforeSwapDelta(
+    //                 inputAmount,
+    //                 outputAmount
+    //             );
+
+    //             _settleAndTake(
+    //                 key,
+    //                 params.zeroForOne,
+    //                 inputAmount,
+    //                 outputAmount,
+    //                 order.receiver
+    //             );
+    //             movedInternally = true; //!Alert
+    //             order.fulfilled = true;
+    //             return (this.beforeSwap.selector, beforeSwapDelta, 0);
+    //         } else if (remainingOut > order.inputAmount) {
+    //             // 2 – el swap cubre la orden por completo y sobra
+    //             console2.log("Estoy en mayor que tu");
+    //             int128 inPart = int128(
+    //                 (order.inputAmount * -params.amountSpecified) / expectedOut
+    //             );
+    //             int128 outPart = int128(-order.inputAmount);
+    //             _settleAndTake(
+    //                 key,
+    //                 params.zeroForOne,
+    //                 inPart,
+    //                 outPart,
+    //                 order.receiver
+    //             );
+    //             remainingOut -= order.inputAmount; // sigue habiendo output a casar
+    //             remainingInputToken -= inPart; // resta el input que se ha casado
+    //             movedInternally = true; //!Alert
+    //             order.fulfilled = true;
+    //             // seguimos el loop
+    //         } else if (remainingOut < order.inputAmount) {
+    //             // 3 – la orden es mayor que el swap ⇒ cubrimos sólo parte
+    //             BeforeSwapDelta deltaWhenLessThan = toBeforeSwapDelta(
+    //                 int128(remainingInputToken),
+    //                 int128(-remainingOut)
+    //             );
+    //             return (this.beforeSwap.selector, deltaWhenLessThan, 0);
+    //         }
+
+    //         BeforeSwapDelta deltaPartial = toBeforeSwapDelta(
+    //             int128(remainingInputToken),
+    //             int128(-remainingOut)
+    //         );
+    //         return (this.beforeSwap.selector, deltaPartial, 0);
+    //     }
+
+    //     if (movedInternally) {
+    //         // El Hook ya movió todos los tokens que debía → núcleo no debe hacer nada
+    //         return (
+    //             this.beforeSwap.selector,
+    //             BeforeSwapDeltaLibrary.ZERO_DELTA,
+    //             0
+    //         );
+    //     }
+
+    //     // Queda input sin casar y no hemos hecho transferencias internas
+    //     BeforeSwapDelta deltaRestante = toBeforeSwapDelta(
+    //         int128(remainingInputToken),
+    //         int128(-remainingOut)
+    //     );
+    //     return (this.beforeSwap.selector, deltaRestante, 0);
+    // }
+    //! Lo que funciona...
+    function _matchOrders(
+        PoolKey calldata key,
+        SwapParams calldata params,
+        int256 expectedOut
+    ) private returns (bytes4, BeforeSwapDelta, uint24) {
+        OnRampOrder[] storage orders = pendingOrders[key.toId()][
+            !params.zeroForOne
+        ];
+
+        int256 remOut = expectedOut; // output que falta entregar
+        int256 matched0; // token0 ya liquidado por Hook
+        int256 matched1; // token1 ya liquidado por Hook
+
+        for (uint256 i; i < orders.length && remOut > 0; ++i) {
+            OnRampOrder storage order = orders[i];
+            if (order.fulfilled) continue;
+
+            int256 takeOut = order.inputAmount <= remOut
+                ? order.inputAmount
+                : remOut;
+
+            // proporción de token0 que hace falta para cubrir `takeOut`
+            int256 takeIn = (takeOut * -params.amountSpecified) / expectedOut;
+
+            _settleAndTake(
+                key,
+                params.zeroForOne,
+                int128(takeIn),
+                int128(-takeOut),
+                order.receiver
+            );
+
+            matched0 += takeIn; // acumulamos para el delta
+            matched1 -= takeOut;
+
+            remOut -= takeOut;
+            if (order.inputAmount <= takeOut) order.fulfilled = true;
+        }
+
+        // Δ que le indica al núcleo lo que YA liquidó el Hook
+        BeforeSwapDelta deltaHook = matched0 == 0
+            ? BeforeSwapDeltaLibrary.ZERO_DELTA
+            : toBeforeSwapDelta(int128(matched0), int128(matched1));
+
+        return (this.beforeSwap.selector, deltaHook, 0);
     }
 }
