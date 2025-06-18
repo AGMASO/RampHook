@@ -37,21 +37,42 @@ contract CreatePoolAndAddLiquidityScript is BaseScript, LiquidityHelpers {
     /////////////////////////////////////
 
     function run() external {
-        address whaleUsdc = 0xF977814e90dA44bFA03b6295A0616a897441aceC; // ejemplo
-        address whaleUsdT = 0xeE7981C4642dE8d19AeD11dA3bac59277DfD59D7; // impersonas al whale
-        vm.startPrank(whaleUsdc);
+        vm.deal(_deployer, 10 ether);
+
+        address whaleUsdc = 0xF977814e90dA44bFA03b6295A0616a897441aceC;
         IERC20 usdc = IERC20(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913);
-        usdc.transfer(_deployer, 1_000_000e6); // te envías 1 M de USDC (6 decimales)
-        uint256 usdcBalance = usdc.balanceOf(_deployer);
-        console2.log("Balance USDC:", usdc.balanceOf(_deployer));
+
+        // Impersona whale para transferir tokens al deployer
+        vm.startPrank(whaleUsdc);
+        usdc.transfer(_deployer, 1_000_000e6);
         vm.stopPrank();
 
-        vm.startPrank(whaleUsdT); // impersonas al whale
+        // Desde el deployer, aprueba a PoolManager
+        vm.prank(_deployer);
+        usdc.approve(address(poolManager), type(uint256).max);
+
+        // Verifica que allowance ahora sí existe
+        console2.log("Balance USDC:", usdc.balanceOf(_deployer));
+        console2.log(
+            "Allowance to PoolManager:",
+            usdc.allowance(_deployer, address(poolManager))
+        );
+
+        address whaleUsdT = 0xeE7981C4642dE8d19AeD11dA3bac59277DfD59D7; // impersonas al whale
         IERC20 usdt = IERC20(0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2);
+
+        vm.startPrank(whaleUsdT); // impersonas al whale
         usdt.transfer(_deployer, 1_000_000e6); // te envías 1 M de USDC (6 decimales)
-        uint256 usdtBalance = usdt.balanceOf(_deployer);
-        console2.log("Balance USDC:", usdt.balanceOf(_deployer));
         vm.stopPrank();
+
+        vm.prank(_deployer);
+        usdt.approve(address(poolManager), type(uint256).max); // approve PoolManager to spend USDT
+
+        console2.log("Balance USDT:", usdt.balanceOf(_deployer));
+        console2.log(
+            "Allowance to PoolManager:",
+            usdt.allowance(_deployer, address(poolManager))
+        );
         (
             uint160 sqrtPriceX96WethUsdc,
             int24 tickCurrentWethUsdc
@@ -139,6 +160,7 @@ contract CreatePoolAndAddLiquidityScript is BaseScript, LiquidityHelpers {
 
         vm.startBroadcast();
         tokenApprovals();
+
         console2.log(address(_deployer).balance);
         console2.log(currency1.balanceOf(_deployer));
         // Multicall to atomically create pool & add liquidity
