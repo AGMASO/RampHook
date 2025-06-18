@@ -49,13 +49,13 @@ contract CreatePoolAndAddLiquidityScript is BaseScript, LiquidityHelpers {
 
         // Desde el deployer, aprueba a PoolManager
         vm.prank(_deployer);
-        usdc.approve(address(poolManager), type(uint256).max);
+        usdc.approve(address(positionManager), type(uint256).max);
 
         // Verifica que allowance ahora sí existe
         console2.log("Balance USDC:", usdc.balanceOf(_deployer));
         console2.log(
             "Allowance to PoolManager:",
-            usdc.allowance(_deployer, address(poolManager))
+            usdc.allowance(_deployer, address(positionManager))
         );
 
         address whaleUsdT = 0xeE7981C4642dE8d19AeD11dA3bac59277DfD59D7; // impersonas al whale
@@ -66,12 +66,12 @@ contract CreatePoolAndAddLiquidityScript is BaseScript, LiquidityHelpers {
         vm.stopPrank();
 
         vm.prank(_deployer);
-        usdt.approve(address(poolManager), type(uint256).max); // approve PoolManager to spend USDT
+        usdt.approve(address(positionManager), type(uint256).max); // approve PoolManager to spend USDT
 
         console2.log("Balance USDT:", usdt.balanceOf(_deployer));
         console2.log(
             "Allowance to PoolManager:",
-            usdt.allowance(_deployer, address(poolManager))
+            usdt.allowance(_deployer, address(positionManager))
         );
         (
             uint160 sqrtPriceX96WethUsdc,
@@ -140,7 +140,7 @@ contract CreatePoolAndAddLiquidityScript is BaseScript, LiquidityHelpers {
         bytes[] memory params = new bytes[](2);
 
         // Initialize Pool
-        console2.log(startingPrice);
+
         params[0] = abi.encodeWithSelector(
             positionManager.initializePool.selector,
             poolKey,
@@ -158,7 +158,7 @@ contract CreatePoolAndAddLiquidityScript is BaseScript, LiquidityHelpers {
         // If the pool is an ETH pair, native tokens are to be transferred
         uint256 valueToPass = currency0.isAddressZero() ? amount0Max : 0;
 
-        vm.startBroadcast();
+        vm.startBroadcast(_deployer);
         tokenApprovals();
 
         console2.log(address(_deployer).balance);
