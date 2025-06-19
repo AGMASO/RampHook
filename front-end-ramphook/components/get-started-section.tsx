@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useAccount, useChainId } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import SwapCompo from "@/components/token-swap";
+import OnRampOrder from "@/components/on-ramp-order";
 import SafeApiKit from "@safe-global/api-kit";
 import Image from "next/image";
 // import ModalAccountsAvalaible from "./ModalAccountsAvalaible";
@@ -18,6 +20,8 @@ export default function GetStartedSection() {
   const [imageOpacity, setImageOpacity] = useState(1);
   const [imageZIndex, setImageZIndex] = useState(30);
   const [optionsOpacity, setOptionsOpacity] = useState(0);
+  const [openModalSwaps, setOpenModalSwaps] = useState(false);
+  const [openModalOnRamp, setOpenModalOnRamp] = useState(false);
 
   useEffect(() => {
     if (isConnected) {
@@ -37,18 +41,38 @@ export default function GetStartedSection() {
     }
   }, [isConnected]);
 
-  // const handleOpenModalAccounts = () => {
-  //   setOpenModalAccounts(true);
-  // };
+  const handleOpenModalSwaps = () => {
+    setOpenModalSwaps(true);
+  };
 
-  // const handleCloseModalAccounts = () => {
-  //   setOpenModalAccounts(false);
-  // };
+  const handleCloseModalSwaps = () => {
+    setOpenModalSwaps(false);
+  };
+
+  const handleOpenModalOnRamp = () => {
+    setOpenModalOnRamp(true);
+  };
+
+  const handleCloseModalOnRamp = () => {
+    setOpenModalOnRamp(false);
+  };
 
   return (
     <>
+      {openModalSwaps && isConnected && (
+        <SwapCompo onClose={handleCloseModalSwaps} />
+      )}
+
+      {openModalOnRamp && isConnected && (
+        <OnRampOrder onClose={handleCloseModalOnRamp} />
+      )}
+
       {isConnected && (
-        <div className='relative w-full h-full min-h-[400px] flex items-center justify-center'>
+        <div
+          className={`relative w-full h-full min-h-[400px] flex items-center justify-center ${
+            openModalSwaps || openModalOnRamp ? "opacity-50" : ""
+          }`}
+        >
           <div
             className='absolute inset-0 flex items-center justify-center transition-all duration-1000 ease-in-out'
             style={{
@@ -77,11 +101,12 @@ export default function GetStartedSection() {
                 </h2>
 
                 <div className='space-y-4 w-full flex flex-col gap-1'>
-                  <Link href='/new-account' className='w-full'>
-                    <Button className='w-full bg-black text-white hover:bg-gray-800 hover:scale-105 transition-all duration-300 ease-in-out'>
-                      Start a swap
-                    </Button>
-                  </Link>
+                  <Button
+                    className='w-full bg-black text-white hover:bg-gray-800 hover:scale-105 transition-all duration-300 ease-in-out'
+                    onClick={handleOpenModalSwaps}
+                  >
+                    Start a swap
+                  </Button>
                 </div>
               </div>
             </div>
@@ -92,17 +117,19 @@ export default function GetStartedSection() {
                 </h2>
 
                 <div className='space-y-4 w-full flex flex-col gap-1'>
-                  <Link href='/new-account' className='w-full'>
-                    <Button className='w-full bg-black text-white hover:bg-gray-800 hover:scale-105 transition-all duration-300 ease-in-out'>
-                      Start an order
-                    </Button>
-                  </Link>
+                  <Button
+                    className='w-full bg-black text-white hover:bg-gray-800 hover:scale-105 transition-all duration-300 ease-in-out'
+                    onClick={handleOpenModalOnRamp}
+                  >
+                    Start an order
+                  </Button>
                 </div>
               </div>
             </div>
           </div>
         </div>
       )}
+
       {!isConnected && (
         <div className='flex flex-col items-center justify-center p-12 bg-gradient-to-r from-[#1184B6] to-gradient-1-end h-fit min-h-[60vh] min-w-[60vw] rounded-xl transition-all duration-1000 ease-in-out'>
           <div className='flex flex-col items-center max-w-md'>
