@@ -433,7 +433,7 @@ contract RampHookTest is Test, Deployers {
         console2.log("Tick before swap: %s", tick);
         //!cambia de zeroForOne como el precio baja, entocnes MIN_SQRT_PRICE + 1.
         //! Como es menor de cualqueir Orden de OnRamp, hacemos todo en Pool
-        //TODO: que pasa cuando es hibrido?
+
         // swapRouter.swap(
         //     key,
         //     SwapParams({
