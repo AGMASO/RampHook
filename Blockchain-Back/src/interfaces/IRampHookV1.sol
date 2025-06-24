@@ -8,7 +8,7 @@ import {BeforeSwapDelta} from "v4-core/types/BeforeSwapDelta.sol";
 
 /**
  * @title RampHookV1 Interface
- * @author Your Name
+ * @author 0xagmaso
  * @notice Interface for the RampHookV1 contract, which manages on-ramp orders and token swaps in Uniswap V4 pools.
  * @dev Defines events, errors, structs, and functions for the RampHookV1 contract.
  */

@@ -102,7 +102,7 @@ contract RampHookV1 is IRampHookV1, BaseHook, Ownable {
         PoolKey memory key = callbackData.key;
 
         OnRampOrder memory newOrder = OnRampOrder({
-            inputAmount: uint256(-swapParams.amountSpecified), //! storing as a positive value
+            inputAmount: int256(-swapParams.amountSpecified), //! storing as a positive value
             receiver: receiver,
             fulfilled: false
         });
