@@ -15,7 +15,7 @@ import Image from "next/image";
 // Use the type directly from the API response
 
 export default function GetStartedSection() {
-  const { address, isConnected, isConnecting, isDisconnected, chain } =
+  const { address, isConnected, isConnecting, isDisconnected, chainId } =
     useAccount();
   const [imageOpacity, setImageOpacity] = useState(1);
   const [imageZIndex, setImageZIndex] = useState(30);
@@ -60,11 +60,19 @@ export default function GetStartedSection() {
   return (
     <>
       {openModalSwaps && isConnected && (
-        <SwapCompo onClose={handleCloseModalSwaps} />
+        <SwapCompo
+          onClose={handleCloseModalSwaps}
+          chainId={chainId}
+          address={address}
+        />
       )}
 
       {openModalOnRamp && isConnected && (
-        <OnRampOrder onClose={handleCloseModalOnRamp} />
+        <OnRampOrder
+          onClose={handleCloseModalOnRamp}
+          chainId={chainId}
+          address={address}
+        />
       )}
 
       {isConnected && (

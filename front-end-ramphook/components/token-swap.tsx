@@ -12,49 +12,111 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpDown, X } from "lucide-react";
+import { ArrowUpDown, X, Loader2 } from "lucide-react";
+import { Chain } from "viem";
+
+import swapDirectlyUSDT from "@/lib/scripts/swapDirectlyUSDT";
 
 interface SwapCompoProps {
   onClose?: () => void;
+  chainId?: number;
+  address?: string;
 }
 
-export default function SwapCompo({ onClose }: SwapCompoProps) {
+export default function SwapCompo({
+  onClose,
+  chainId,
+  address,
+}: SwapCompoProps) {
   const [selectedToken, setSelectedToken] = useState("");
   const [amountToSwap, setAmountToSwap] = useState("");
   const [minAmountToGet, setMinAmountToGet] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSwap = () => {
+  const tokens = [
+    {
+      value: "0xC3726B8054f88FD63F9268c0ab21667083D01414", // USDT address on Sepolia
+      label: "USDT to USDC",
+      logo: "/tether-usdt-logo.png",
+    },
+
+    {
+      value: "link",
+      label: "LINK",
+      logo: "/chainlink-link-logo.png",
+    },
+  ];
+
+  const handleSwap = async () => {
     console.log("Swap initiated:", {
       token: selectedToken,
       amountToSwap,
       minAmountToGet,
     });
-  };
 
-  const tokens = [
-    {
-      value: "usdt",
-      label: "USDT",
-      logo: "/placeholder.svg?height=24&width=24",
-    },
-    {
-      value: "tokena",
-      label: "TokenA",
-      logo: "/placeholder.svg?height=24&width=24",
-    },
-    {
-      value: "link",
-      label: "LINK",
-      logo: "/placeholder.svg?height=24&width=24",
-    },
-  ];
+    setIsLoading(true);
+
+    try {
+      // if (chainId == 11155111 && selectedToken == tokens[0].value) {
+      //   //!Aqui ejecutamos un swap con accross to nuestra pool en Base
+      //   //! el swap es tokenTosell USDT to USDC
+      //   await acrossSwapToBaseUSDT({
+      //     senderAddress: address!,
+      //     tokenToSell: selectedToken,
+      //     amountToSell: BigInt(amountToSwap),
+      //     minimumAmountToReceive: BigInt(minAmountToGet),
+      //   });
+      // }
+      // }else if ( chainId == 11155111 && selectedToken == tokens[1].value){
+      //   //!Aqui ejecutamos un swap con accross to nuestra pool en Base
+      //   //! el swap es tokenTosell TokenA to USDC
+      //   await acrossSwapToBaseTokenA({
+      //     senderAddress: address!,
+      //     tokenToSell: selectedToken,
+      //     amountToSell: amountToSwap,
+      //     minimumAmountToReceive: minAmountToGet,
+      //  } else if (chainId == 84532 && selectedToken == tokens[2].value) {
+      //   //!Aqui ejecutamos un swap con accross to nuestra pool en Base
+      //   //! el swap es tokenTosell LINK to USDC
+      //   await acrossSwapToBaseLINK({
+      //     senderAddress: address!,
+      //     tokenToSell: selectedToken,
+      //     amountToSell: amountToSwap,
+      //     minimumAmountToReceive: minAmountToGet,
+      //   });
+
+      if (
+        chainId == 84532 &&
+        selectedToken == "0xC3726B8054f88FD63F9268c0ab21667083D01414"
+      ) {
+        //!Aqui ejecutamos un swap directamten usando el PoolSwapTest Router
+        await swapDirectlyUSDT({
+          senderAddress: address!,
+          tokenToSell: selectedToken,
+          amountToSell: amountToSwap,
+          minimumAmountToReceive: minAmountToGet,
+        });
+
+        // Mostrar alerta de éxito
+        alert("Transaction completed successfully!");
+
+        // Cerrar modal después de la alerta
+        onClose?.();
+      }
+    } catch (error) {
+      console.error("Error in swap:", error);
+      alert("Transaction failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className='absolute inset-0 z-50 flex items-center justify-center'>
       {/* Backdrop with blur effect - only covering the content area */}
       <div
         className='absolute inset-0 bg-black/30 backdrop-blur-md'
-        onClick={onClose}
+        onClick={!isLoading ? onClose : undefined}
       ></div>
 
       {/* Modal content */}
@@ -63,6 +125,7 @@ export default function SwapCompo({ onClose }: SwapCompoProps) {
           onClick={onClose}
           className='absolute top-4 right-4 p-1 rounded-full hover:bg-gray-200 transition-colors'
           aria-label='Close'
+          disabled={isLoading}
         >
           <X className='h-5 w-5' />
         </button>
@@ -106,6 +169,7 @@ export default function SwapCompo({ onClose }: SwapCompoProps) {
               value={amountToSwap}
               onChange={(e) => setAmountToSwap(e.target.value)}
               className='text-right'
+              disabled={isLoading}
             />
           </div>
 
@@ -118,15 +182,25 @@ export default function SwapCompo({ onClose }: SwapCompoProps) {
               value={minAmountToGet}
               onChange={(e) => setMinAmountToGet(e.target.value)}
               className='text-right'
+              disabled={isLoading}
             />
           </div>
 
           <Button
             onClick={handleSwap}
             className='w-full h-12 text-lg font-semibold bg-gradient-to-r from-[#cb3b3d] to-gradient-1-end text-black'
-            disabled={!selectedToken || !amountToSwap || !minAmountToGet}
+            disabled={
+              !selectedToken || !amountToSwap || !minAmountToGet || isLoading
+            }
           >
-            Swap Tokens
+            {isLoading ? (
+              <>
+                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                Processing...
+              </>
+            ) : (
+              "Swap Tokens"
+            )}
           </Button>
         </CardContent>
       </Card>
