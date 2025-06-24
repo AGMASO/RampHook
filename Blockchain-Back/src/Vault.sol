@@ -16,8 +16,11 @@ contract Vault is Ownable {
         address indexed receiverAddress,
         address indexed desiredToken
     );
+    // address private constant usdcTokenAddress =
+    //     0x096b36810d4E9243318f0Cd4C18a2dbd1661470C; // USDC token address on Base Sepolia
+    // //!onlyfo test
     address private constant usdcTokenAddress =
-        0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913; // USDC token address on Base mainnet
+        0xC20f3Fe19A33572D68Bcb835504862966C022260;
     mapping(bytes32 poolId => address rampHookAddress) public rampHooks;
     mapping(address token0 => mapping(address token1 => PoolKey key))
         public poolKeysByTokenPair;
@@ -29,7 +32,6 @@ contract Vault is Ownable {
     }
 
     constructor() Ownable(msg.sender) {}
-    receive() external payable {}
 
     function setWhiteListRampHook(PoolKey calldata key) external onlyOwner {
         bytes32 poolId = PoolId.unwrap(key.toId());
@@ -79,10 +81,13 @@ contract Vault is Ownable {
             revert Vault_RampHookNotSet();
         }
 
+        bool zeroForOne = token0 == usdcTokenAddress ? true : false;
         SwapParams memory swapParams = SwapParams({
-            zeroForOne: token0 == usdcTokenAddress ? true : false,
+            zeroForOne: zeroForOne,
             amountSpecified: -(int256(_onrampData.amount)),
-            sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
+            sqrtPriceLimitX96: zeroForOne
+                ? TickMath.MIN_SQRT_PRICE + 1
+                : TickMath.MAX_SQRT_PRICE - 1
         });
 
         RampHookV1(rampHookAddress).createOnRampOrder(
@@ -105,5 +110,12 @@ contract Vault is Ownable {
     }
     function getRampHook(PoolKey calldata key) external view returns (address) {
         return rampHooks[PoolId.unwrap(key.toId())];
+    }
+    function approveHook(
+        address token,
+        address hook,
+        uint256 amount
+    ) external onlyOwner {
+        IERC20Minimal(token).approve(hook, amount);
     }
 }

@@ -38,7 +38,7 @@ contract RampHookTest is Test, Deployers {
         deployFreshManagerAndRouters();
 
         MockERC20 _currencyA = new MockERC20("FakeUsdc", "USDC", 6);
-        address usdcTokenAddressBase = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
+        address usdcTokenAddressBase = 0xC20f3Fe19A33572D68Bcb835504862966C022260;
         vm.etch(usdcTokenAddressBase, address(_currencyA).code);
         _currencyA = MockERC20(usdcTokenAddressBase);
         _currencyA.mint(address(this), 1_000_000_000_000_000_000_000e6); // type(uint256).max);

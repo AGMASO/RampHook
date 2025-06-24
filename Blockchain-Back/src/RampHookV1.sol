@@ -19,29 +19,13 @@ import {IRampHookV1} from "./interfaces/IRampHookV1.sol";
 import {CurrencySettler} from "@uniswap/v4-core/test/utils/CurrencySettler.sol";
 import {LPFeeLibrary} from "v4-core/libraries/LPFeeLibrary.sol";
 
-contract RampHookV1 is BaseHook, Ownable {
-    error RampHook_MustUseDynamicFee();
-
+contract RampHookV1 is IRampHookV1, BaseHook, Ownable {
     using CurrencySettler for Currency;
     using StateLibrary for IPoolManager;
     using LPFeeLibrary for uint24;
 
-    // using FixedPointMathLib for uint256;
-
     address private s_vault;
 
-    error OnlyVaultCanCreateOnRampOrder();
-    event OnRampOrderCreated(
-        bool zeroForOne,
-        address receiver,
-        int256 amountSpecified
-    );
-    struct OnRampOrder {
-        int256 inputAmount;
-        address receiver;
-        bool fulfilled;
-    }
-    //mapping que genera las pendignOrders
     mapping(PoolId poolId => mapping(bool zeroForOne => OnRampOrder[]))
         public pendingOrders;
 
@@ -55,16 +39,9 @@ contract RampHookV1 is BaseHook, Ownable {
 
     modifier onlyVault() {
         if (msg.sender != address(s_vault)) {
-            revert OnlyVaultCanCreateOnRampOrder();
+            revert RampHook_OnlyVaultCanCreateOnRampOrder();
         }
         _;
-    }
-
-    struct CallbackData {
-        SwapParams swapParams;
-        address receiver;
-        address sender;
-        PoolKey key;
     }
 
     function getHookPermissions()
@@ -102,13 +79,8 @@ contract RampHookV1 is BaseHook, Ownable {
         if (!key.fee.isDynamicFee()) revert RampHook_MustUseDynamicFee();
         return this.beforeInitialize.selector;
     }
-    /** @notice This function should be called by Vault and in hee we need to:
-     * 1: introduce the Liquidity to the pool
-     * 2: update mappings to track the orders
-     * 3:
-     *
-     */
 
+    /// @inheritdoc IRampHookV1
     function createOnRampOrder(
         SwapParams calldata swapParams,
         address receiver,
@@ -119,6 +91,7 @@ contract RampHookV1 is BaseHook, Ownable {
         );
     }
 
+    /// @inheritdoc IRampHookV1
     function unlockCallback(
         bytes calldata data
     ) external onlyPoolManager returns (bytes memory) {
@@ -172,8 +145,12 @@ contract RampHookV1 is BaseHook, Ownable {
             swapParams.amountSpecified
         );
     }
+    /// @inheritdoc IRampHookV1
+    function setVault(address _vault) external onlyOwner {
+        require(_vault != address(0), "Vault address cannot be zero");
+        s_vault = _vault;
+    }
 
-    // function beforeSwap(address sender, PoolKey calldata key, SwapParams calldata params, bytes calldata hookData)
     function _beforeSwap(
         address sender,
         PoolKey calldata key,
@@ -190,7 +167,15 @@ contract RampHookV1 is BaseHook, Ownable {
 
         return _matchOrders(key, params, expectedOut);
     }
-
+    /**
+     * @notice Settles the swap and takes the output amount
+     * @dev This function is called to finalize the swap and transfer tokens to the receiver
+     * @param key Pool key identifying the pool
+     * @param zeroForOne Direction of the swap (true if swapping token0 for token1)
+     * @param inputAmount Amount of input tokens for the swap
+     * @param outputAmount Amount of output tokens to be taken
+     * @param onRamperReceiver Address that will receive the output tokens
+     */
     function _settleAndTake(
         PoolKey memory key,
         bool zeroForOne,
@@ -235,31 +220,16 @@ contract RampHookV1 is BaseHook, Ownable {
         );
     }
 
-    function setVault(address _vault) external onlyOwner {
-        require(_vault != address(0), "Vault address cannot be zero");
-        s_vault = _vault;
-    }
-
-    function getPendingOrders(
-        PoolId poolId,
-        bool zeroForOne
-    ) external view returns (OnRampOrder[] memory) {
-        return pendingOrders[poolId][zeroForOne];
-    }
-    function _tickToPrice(int24 currentTick) public pure returns (uint256) {
-        uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(currentTick);
-        // Convertir sqrtPriceX96 a un precio decimal (por ejemplo, Q64.96 a Q18)
-        return (uint256(sqrtPriceX96) * uint256(sqrtPriceX96)) / (1 << 192);
-    }
-
-    function _getExpectedOutput(
-        int256 _amountSpecified,
-        uint256 _price
-    ) private pure returns (int256 expectedOutput) {
-        expectedOutput = (_amountSpecified * int256(_price));
-    }
-
-    //! Lo que funciona...
+    /**
+     * @notice Matches orders in the pool
+     * @dev This function is called to execute the swap and fulfill the on-ramp order
+     * @param key Pool key identifying the pool
+     * @param params Swap parameters for the operation
+     * @param expectedOut Expected output amount from the swap
+     * @return bytes4 Selector for the callback function
+     * @return BeforeSwapDelta Delta amounts before the swap
+     * @return uint24 The fee tier of the pool used for the swap
+     */
     function _matchOrders(
         PoolKey calldata key,
         SwapParams calldata params,
@@ -307,5 +277,33 @@ contract RampHookV1 is BaseHook, Ownable {
         uint24 fee = matched0 == 0 ? 5000 : 60000;
         uint24 feeWithFlag = fee | LPFeeLibrary.OVERRIDE_FEE_FLAG;
         return (this.beforeSwap.selector, deltaHook, feeWithFlag);
+    }
+
+    /// @inheritdoc IRampHookV1
+    function getPendingOrders(
+        PoolId poolId,
+        bool zeroForOne
+    ) external view returns (OnRampOrder[] memory) {
+        return pendingOrders[poolId][zeroForOne];
+    }
+
+    /// @inheritdoc IRampHookV1
+    function _tickToPrice(int24 currentTick) public pure returns (uint256) {
+        // uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(currentTick);
+        // // Convertir sqrtPriceX96 a un precio decimal (por ejemplo, Q64.96 a Q18)
+        // return (uint256(sqrtPriceX96) * uint256(sqrtPriceX96)) / (1 << 192);
+
+        uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(currentTick);
+        uint256 num = uint256(sqrtPriceX96) * uint256(sqrtPriceX96);
+        // ← Q64.96 → Q18: multiplica por 1e18 ANTES del shift
+        return (num * 1e18) >> 192;
+    }
+
+    function _getExpectedOutput(
+        int256 _amountSpecified,
+        uint256 _price
+    ) private pure returns (int256 expectedOutput) {
+        // expectedOutput = (_amountSpecified * int256(_price));
+        expectedOutput = (_amountSpecified * int256(_price)) / 1e18;
     }
 }

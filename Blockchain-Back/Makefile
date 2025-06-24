@@ -40,8 +40,8 @@ ifeq ($(findstring --network basesepolia,$(ARGS)),--network basesepolia)
 endif
 
 deploy:
-	@forge script script/DeployAll.s.sol:DeployAll $(NETWORK_ARGS)
+	@forge script script/02_DeployAll.s.sol:DeployAll $(NETWORK_ARGS)
 	//make deploy ARGS="--network basesepolia"
-MintNft:
-	@forge script script/Interactions.s.sol:MintNft $(NETWORK_ARGS)
-
+fund:
+	@forge script script/00_DeployTokensAndMint.s.sol:DeployTokensAndMintScript $(NETWORK_ARGS)
+	//fund deploy ARGS="--network basesepolia"

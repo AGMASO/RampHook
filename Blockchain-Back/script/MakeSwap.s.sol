@@ -23,11 +23,11 @@ contract MakeSwap is Script {
     IPoolManager public constant poolManager =
         IPoolManager(0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408); // Replace with actual address
     PoolSwapTest public constant swapRouter =
-        PoolSwapTest(0x6E6BecDf3F03f85C8B2ef72ceCE62AabAdfa9535); // Replace with deployed address
+        PoolSwapTest(0x47e2fD55a1D27CB322533c9b0C2AeAcB36d58c72); // Replace with deployed address
 
     // Token addresses - using USDCm and USDTm
-    IERC20 constant token0 = IERC20(0xEa54F59D3359B41fd5A86eaa0DC97Ab9e0F67634); // USDCm
-    IERC20 constant token1 = IERC20(0x83fe3027f6550FFd97758d973B4242fe29e467f8); // USDTm
+    IERC20 constant token0 = IERC20(0x096b36810d4E9243318f0Cd4C18a2dbd1661470C); // USDCm
+    IERC20 constant token1 = IERC20(0xC3726B8054f88FD63F9268c0ab21667083D01414); // USDTm
 
     Currency public currency0;
     Currency public currency1;
@@ -35,7 +35,7 @@ contract MakeSwap is Script {
     bytes constant ZERO_BYTES = new bytes(0);
     int24 constant tickSpacing = 1;
     IHooks public constant hookContract =
-        IHooks(0xB36A076F48A1Adf2DC5B59bCfA03B6649cA1e088); // Replace with actual hook address
+        IHooks(0xA11C7Faf1b89B9173B5d7137591Ccb51D2F96088); // Replace with actual hook address
 
     function run() public {
         console2.log("Starting swap as account:", swapper);
@@ -47,7 +47,7 @@ contract MakeSwap is Script {
         vm.startBroadcast(swapper);
 
         // Make the swap
-        uint256 amountToSwap = 400e6; // 400 USDCm
+        uint256 amountToSwap = 700e6; // 400 USDCm
 
         // Approve the router
         IERC20(Currency.unwrap(currency0)).approve(
@@ -55,10 +55,10 @@ contract MakeSwap is Script {
             amountToSwap
         );
 
-        IERC20(Currency.unwrap(currency0)).approve(
-            address(poolManager),
-            type(uint256).max
-        ); // Approve PoolManager for USDCm
+        // IERC20(Currency.unwrap(currency0)).approve(
+        //     address(poolManager),
+        //     type(uint256).max
+        // ); // Approve PoolManager for USDCm //!No es necesario aprobar al PoolManager
         console2.log("Approved swapRouter to spend USDCm");
 
         // Swap settings
@@ -69,7 +69,9 @@ contract MakeSwap is Script {
 
         // Execute the swap
         console2.log("Executing swap of", amountToSwap, "USDCm for USDTm");
-
+        console2.log("------ SWAPPER BALANCES BEFORE SWAP ------");
+        console2.log("USDCm balance before swap:", token0.balanceOf(swapper));
+        console2.log("USDTm balance before swap:", token1.balanceOf(swapper));
         swapRouter.swap(
             key,
             SwapParams({
