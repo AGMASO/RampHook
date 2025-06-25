@@ -3,14 +3,15 @@ import { abiPoolTestSwap } from "../abis/abiPoolTestSwap";
 import { abiCustomERC20 } from "../abis/abiCustomERC20";
 import { abiVault } from "@/lib/abis/abiVault";
 import { Interface } from "ethers/lib/utils.js";
+import { abiUSDCBASE } from "../abis/abiUSDCBASE";
 require("dotenv").config();
 import {
-  ADDRES_HOOK,
-  USDCm,
-  USDTm,
-  ADDRESS_VAULT,
-  addressPoolSwapTestRouter,
-} from "../abis/addressConstantsTest";
+  addressPoolSwapTestRouter_BASE,
+  ADDRES_HOOK_BASE,
+  USDC_BASE,
+  DAI_BASE,
+  ADDRESS_VAULT_BASE,
+} from "../abis/addressConstantsMain";
 
 interface onRampOrderProps {
   amountToSell: string;
@@ -24,7 +25,7 @@ interface onRampOrderData {
   desiredToken: string; // address
 }
 
-export default async function onRampOrder({
+export default async function onRampOrderMain({
   amountToSell,
   receiverAddress,
   desiredToken,
@@ -41,14 +42,22 @@ export default async function onRampOrder({
 
     console.log("estoy trabajando");
 
-    const vaultContract = new ethers.Contract(ADDRESS_VAULT, abiVault, signer);
+    const vaultContract = new ethers.Contract(
+      ADDRESS_VAULT_BASE,
+      abiVault,
+      signer
+    );
 
-    const USDCmContract = new ethers.Contract(USDCm, abiCustomERC20, signer);
+    const USDCBaseContract = new ethers.Contract(
+      USDC_BASE,
+      abiUSDCBASE,
+      signer
+    );
 
     let amountToSellFormatted = await ethers.utils.parseUnits(amountToSell, 6);
 
     const onRampData: onRampOrderData = {
-      amount: BigInt(amountToSellFormatted), // negativo para indicar "exact input"
+      amount: BigInt(amountToSellFormatted),
       receiverAddress: receiverAddress,
       desiredToken: desiredToken, // dirección del token deseado
     };
@@ -56,26 +65,28 @@ export default async function onRampOrder({
     console.log("Estoy Aqui 2");
     const ownerAddress = await vaultContract.owner();
     console.log("Owner Address:", ownerAddress);
-    const balanceUSDCmVault = await USDCmContract.balanceOf(ADDRESS_VAULT);
-    console.log("Balance USDCm en el vault:", balanceUSDCmVault.toString());
-    const allowanceBefore = await USDCmContract.allowance(
-      ADDRESS_VAULT,
-      ADDRES_HOOK
+    const balanceUSDCVault = await USDCBaseContract.balanceOf(
+      ADDRESS_VAULT_BASE
+    );
+    console.log("Balance USDCm en el vault:", balanceUSDCVault.toString());
+    const allowanceBefore = await USDCBaseContract.allowance(
+      ADDRESS_VAULT_BASE,
+      ADDRES_HOOK_BASE
     );
     console.log(
       `Allowance USDCm del Vault hacia Hook (antes): ${allowanceBefore.toString()}`
     );
 
     const tx1 = await vaultContract.approveHook(
-      USDCm,
-      ADDRES_HOOK,
+      USDC_BASE,
+      ADDRES_HOOK_BASE,
       amountToSellFormatted
     );
     await tx1.wait();
     console.log("Estoy Aqui 3");
     const tx11 = await vaultContract.approveHook(
-      USDTm,
-      ADDRES_HOOK,
+      DAI_BASE,
+      ADDRES_HOOK_BASE,
       amountToSellFormatted
     );
     await tx11.wait();

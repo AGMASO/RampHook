@@ -9,13 +9,13 @@ import {
   lightTheme,
 } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
-import { baseSepolia, sepolia } from "wagmi/chains";
+import { baseSepolia, mainnet, base } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 
 const config = getDefaultConfig({
   appName: "PrestaINK",
   projectId: "70ede407cbabb5d9c188a21d691b2ff5",
-  chains: [sepolia, baseSepolia],
+  chains: [baseSepolia, mainnet, base],
   ssr: true, // If your dApp uses server side rendering (SSR)
 });
 const queryClient = new QueryClient();

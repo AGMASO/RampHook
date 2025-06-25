@@ -3,18 +3,17 @@ import { abiPoolTestSwap } from "../abis/abiPoolTestSwap";
 import { abiCustomERC20 } from "../abis/abiCustomERC20";
 require("dotenv").config();
 import {
-  ADDRES_HOOK,
-  USDCm,
-  USDTm,
-  ADDRESS_VAULT,
-  addressPoolSwapTestRouter,
-} from "../abis/addressConstantsTest";
+  addressPoolSwapTestRouter_BASE,
+  ADDRES_HOOK_BASE,
+  USDC_BASE,
+  DAI_BASE,
+  ADDRESS_VAULT_BASE,
+} from "../abis/addressConstantsMain";
+import { abiDai } from "../abis/abiDai";
 
 interface swapDirectlyParams {
-  senderAddress: string;
   tokenToSell: string;
   amountToSell: string;
-  minimumAmountToReceive: string;
 }
 
 interface PoolKey {
@@ -33,11 +32,9 @@ interface TestSettings {
   takeClaims: boolean;
   settleUsingBurn: boolean;
 }
-export default async function swapDirectlyUSDT({
-  senderAddress,
+export default async function swapDirectlyDAI({
   tokenToSell,
   amountToSell,
-  minimumAmountToReceive,
 }: swapDirectlyParams) {
   console.log("estoy aqui");
 
@@ -54,15 +51,15 @@ export default async function swapDirectlyUSDT({
 
     console.log(signer);
 
-    console.log("estoy trabajando");
+    console.log("estoy trabajando en swapDirectlyDAI");
 
     const swapTestContract = new ethers.Contract(
-      addressPoolSwapTestRouter,
+      addressPoolSwapTestRouter_BASE,
       abiPoolTestSwap,
       signer
     );
 
-    const USDTmContract = new ethers.Contract(USDTm, abiCustomERC20, signer);
+    const DAIContract = new ethers.Contract(DAI_BASE, abiDai, signer);
 
     const [currency0, currency1] = getCurrencies(tokenToSell);
     const key: PoolKey = {
@@ -70,15 +67,16 @@ export default async function swapDirectlyUSDT({
       currency1,
       fee: DYNAMIC_FEE,
       tickSpacing: 1,
-      hooks: ADDRES_HOOK,
+      hooks: ADDRES_HOOK_BASE,
     };
 
     let zeroForOne = currency0 === tokenToSell;
-    let amountToSellFormatted = await ethers.utils.parseUnits(amountToSell, 6);
+    //! No format again to 1e18, it comes formatted form the bridgeTokensToBase.ts
+    // let amountToSellFormatted = await ethers.utils.parseUnits(amountToSell, 18);
     const params: SwapParams = {
-      zeroForOne: zeroForOne, // false = vendes currency1 USDT
-      amountSpecified: BigInt(-amountToSellFormatted), // negativo ⇢ exact input
-      sqrtPriceLimitX96: MAX_SQRT_PRICE,
+      zeroForOne: zeroForOne, // true = vendes currency0 DAI
+      amountSpecified: BigInt(-amountToSell), // negativo ⇢ exact input
+      sqrtPriceLimitX96: MIN_SQRT_PRICE,
     };
 
     const testSettings: TestSettings = {
@@ -87,9 +85,9 @@ export default async function swapDirectlyUSDT({
     };
 
     const hookData = "0x";
-    const tx1 = await USDTmContract.approve(
+    const tx1 = await DAIContract.approve(
       swapTestContract.address,
-      amountToSellFormatted
+      ethers.constants.MaxUint256 // Usar MaxUint256 para permitir múltiples swaps
     );
     await tx1.wait();
 
@@ -105,10 +103,10 @@ export default async function swapDirectlyUSDT({
     console.log("Hash de la transacción:", receipt.transactionHash);
 
     function getCurrencies(tokenToSell: string): [string, string] {
-      if (tokenToSell.toLowerCase() < USDCm.toLowerCase()) {
-        return [tokenToSell, USDCm];
+      if (tokenToSell.toLowerCase() < USDC_BASE.toLowerCase()) {
+        return [tokenToSell, USDC_BASE];
       } else {
-        return [USDCm, tokenToSell];
+        return [USDC_BASE, tokenToSell];
       }
     }
   } catch (error) {
