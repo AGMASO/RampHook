@@ -30,7 +30,6 @@ import {CustomERC20} from "../src/mocks/CustomERC20.sol";
 
 import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 import {HookMiner} from "v4-periphery/src/utils/HookMiner.sol";
-import {LiquidityHelpers} from "./base/LiquidityHelpers.sol";
 
 contract DeployAll is Script {
     IPermit2 immutable permit2 =

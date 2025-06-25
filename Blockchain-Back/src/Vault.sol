@@ -29,11 +29,11 @@ contract Vault is IVault, Ownable {
     // address private constant USDC_MOCK_ADDRESS =
     //     0x096b36810d4E9243318f0Cd4C18a2dbd1661470C; // USDC token address on Base Sepolia
     // // //!only for test
-    // address private constant USDC_MOCK_ADDRESS =
-    //     0xC20f3Fe19A33572D68Bcb835504862966C022260;
-    // //!only for test
     address private constant USDC_MOCK_ADDRESS =
-        0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
+        0xC20f3Fe19A33572D68Bcb835504862966C022260;
+    // // //!only for test
+    // address private constant USDC_MOCK_ADDRESS =
+    //     0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
 
     /**
      * @notice Mapping of pool IDs to their corresponding ramp hook addresses
