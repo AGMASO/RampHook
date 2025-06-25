@@ -9,6 +9,11 @@ import {RampHookV1} from "./RampHookV1.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {IVault} from "./interfaces/IVault.sol";
 
+/// @title Vault Contract
+/// @author 0xagmaso
+/// @notice This contract acts as a Vault for funds for the Onramp service.
+/// @notice It allows the owner to set ramp hooks and pool keys, execute onramp operations, and manage token approvals.
+/// @dev The contract uses Ownable for access control, allowing only the owner to perform certain
 contract Vault is IVault, Ownable {
     /**
      * @notice Structure representing onramp operation data
@@ -21,17 +26,28 @@ contract Vault is IVault, Ownable {
         address receiverAddress;
         address desiredToken;
     }
-    // address private constant USDC_MOCK_ADDRESS =
-    //     0x096b36810d4E9243318f0Cd4C18a2dbd1661470C; // USDC token address on Base Sepolia
-    //!only for test
     address private constant USDC_MOCK_ADDRESS =
-        0xC20f3Fe19A33572D68Bcb835504862966C022260;
+        0x096b36810d4E9243318f0Cd4C18a2dbd1661470C; // USDC token address on Base Sepolia
+    // //!only for test
+    // address private constant USDC_MOCK_ADDRESS =
+    //     0xC20f3Fe19A33572D68Bcb835504862966C022260;
+
+    /**
+     * @notice Mapping of pool IDs to their corresponding ramp hook addresses
+     */
     mapping(bytes32 poolId => address rampHookAddress) public rampHooks;
+    /**
+     * @notice Mapping of token pairs to their corresponding pool keys
+     */
     mapping(address token0 => mapping(address token1 => PoolKey key))
         public poolKeysByTokenPair;
 
     constructor() Ownable(msg.sender) {}
-
+    /**
+     * @notice Sets a whitelisted ramp hook for a specific pool
+     * @dev Only callable by the contract owner
+     * @param key Pool key identifying the pool and its hook
+     */
     function setWhiteListRampHook(PoolKey calldata key) external onlyOwner {
         bytes32 poolId = PoolId.unwrap(key.toId());
         address hook = address(key.hooks);
@@ -40,7 +56,13 @@ contract Vault is IVault, Ownable {
 
         rampHooks[poolId] = hook;
     }
-
+    /**
+     * @notice Sets the pool key for a token pair
+     * @dev Only callable by the contract owner
+     * @param token0 First token address (sorted)
+     * @param token1 Second token address (sorted)
+     * @param key Pool key for the token pair
+     */
     function setPoolKey(
         address token0,
         address token1,
@@ -57,7 +79,11 @@ contract Vault is IVault, Ownable {
 
         poolKeysByTokenPair[token0][token1] = key;
     }
-
+    /**
+     * @notice Executes an onramp operation
+     * @dev Only callable by the contract owner
+     * @param _onrampData Data for the onramp operation
+     */
     function onramp(OnrampData memory _onrampData) external onlyOwner {
         require(_onrampData.amount > 0, "Amount must be greater than zero");
         require(
@@ -107,16 +133,26 @@ contract Vault is IVault, Ownable {
     ) internal pure returns (address, address) {
         return token0 < token1 ? (token0, token1) : (token1, token0);
     }
-
-    function getRampHook(PoolKey calldata key) external view returns (address) {
-        return rampHooks[PoolId.unwrap(key.toId())];
-    }
-
+    /**
+     * @notice Approves a hook to spend tokens on behalf of the vault
+     * @dev Only callable by the contract owner
+     * @param token Token address to approve
+     * @param hook Hook address to approve
+     * @param amount Amount of tokens to approve
+     */
     function approveHook(
         address token,
         address hook,
         uint256 amount
     ) external onlyOwner {
         IERC20Minimal(token).approve(hook, amount);
+    }
+    /**
+     * @notice Retrieves the ramp hook address for a given pool key
+     * @param key Pool key identifying the pool
+     * @return address Address of the ramp hook for the pool
+     */
+    function getRampHook(PoolKey calldata key) external view returns (address) {
+        return rampHooks[PoolId.unwrap(key.toId())];
     }
 }
