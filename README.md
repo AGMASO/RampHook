@@ -5,6 +5,7 @@
 **Ramphook** is an innovative on-ramping service that leverages **Uniswap v4** and **Hooks** to serve users efficiently. Unlike traditional on-ramping services, our protocol only needs to maintain **a single liquidity token: USDC**, while still providing access to *any token* listed on Uniswap v4 — as long as there's a `TokenA/USDC` pool using our Hook.
 
 ---
+**VIDEO DEMO**: https://youtu.be/cgY85TT_C9M
 
 ## Problem It Solves
 
@@ -95,4 +96,6 @@ This allows users holding tokens on **Ethereum Mainnet** to interact with our po
    Our architecture allows seamless addition of new `TokenX/USDC` pools on Uniswap v4.  
    It’s a highly scalable solution: **the more LPs join and believe in the protocol, the more token options we can offer for on-ramping**.  
    Any token with an active community can become part of the Ramphook ecosystem simply by adding liquidity!
+   
+<img width="1265" alt="Screenshot 2025-06-25 at 20 25 32" src="https://github.com/user-attachments/assets/1bde46f5-61d3-4fd7-878b-74baefd6ed14" />
 
