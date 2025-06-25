@@ -61,12 +61,6 @@ export default function NavBarMainCropped() {
           `}
         >
           <div className='flex items-center'>
-            <Image
-              src='/shieldLogo.png'
-              alt='Shield Logo'
-              width={40}
-              height={40}
-            />
             <div className='flex items-center'>
               <span className='text-xl pl-1 font-extralight text-white font-montserrat'>
                 Ramp

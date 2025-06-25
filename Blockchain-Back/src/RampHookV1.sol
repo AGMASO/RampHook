@@ -23,6 +23,8 @@ contract RampHookV1 is IRampHookV1, BaseHook, Ownable {
     using CurrencySettler for Currency;
     using StateLibrary for IPoolManager;
     using LPFeeLibrary for uint24;
+    uint24 constant NORMAL_SWAP_FEE = 5000; // 0.5% fee
+    uint24 constant HIGH_SWAP_FEE = 60000; // 6% fee
 
     address private s_vault;
     /// @notice mapping to store pending on-ramp orders
@@ -280,7 +282,7 @@ contract RampHookV1 is IRampHookV1, BaseHook, Ownable {
             ? BeforeSwapDeltaLibrary.ZERO_DELTA
             : toBeforeSwapDelta(int128(matched0), int128(matched1));
 
-        uint24 fee = matched0 == 0 ? 5000 : 60000;
+        uint24 fee = matched0 == 0 ? NORMAL_SWAP_FEE : HIGH_SWAP_FEE;
         uint24 feeWithFlag = fee | LPFeeLibrary.OVERRIDE_FEE_FLAG;
         return (this.beforeSwap.selector, deltaHook, feeWithFlag);
     }

@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpDown, X, Loader2 } from "lucide-react";
-import { Chain } from "viem";
 
 import swapDirectlyUSDT from "@/lib/scripts/swapDirectlyUSDT";
 
@@ -35,7 +34,7 @@ export default function SwapCompo({
 
   const tokens = [
     {
-      value: "0xC3726B8054f88FD63F9268c0ab21667083D01414", // USDT address on Sepolia
+      value: "0xC3726B8054f88FD63F9268c0ab21667083D01414", // USDT address on Base Sepolia
       label: "USDT to USDC",
       logo: "/tether-usdt-logo.png",
     },
@@ -57,39 +56,12 @@ export default function SwapCompo({
     setIsLoading(true);
 
     try {
-      // if (chainId == 11155111 && selectedToken == tokens[0].value) {
-      //   //!Aqui ejecutamos un swap con accross to nuestra pool en Base
-      //   //! el swap es tokenTosell USDT to USDC
-      //   await acrossSwapToBaseUSDT({
-      //     senderAddress: address!,
-      //     tokenToSell: selectedToken,
-      //     amountToSell: BigInt(amountToSwap),
-      //     minimumAmountToReceive: BigInt(minAmountToGet),
-      //   });
-      // }
-      // }else if ( chainId == 11155111 && selectedToken == tokens[1].value){
-      //   //!Aqui ejecutamos un swap con accross to nuestra pool en Base
-      //   //! el swap es tokenTosell TokenA to USDC
-      //   await acrossSwapToBaseTokenA({
-      //     senderAddress: address!,
-      //     tokenToSell: selectedToken,
-      //     amountToSell: amountToSwap,
-      //     minimumAmountToReceive: minAmountToGet,
-      //  } else if (chainId == 84532 && selectedToken == tokens[2].value) {
-      //   //!Aqui ejecutamos un swap con accross to nuestra pool en Base
-      //   //! el swap es tokenTosell LINK to USDC
-      //   await acrossSwapToBaseLINK({
-      //     senderAddress: address!,
-      //     tokenToSell: selectedToken,
-      //     amountToSell: amountToSwap,
-      //     minimumAmountToReceive: minAmountToGet,
-      //   });
-
+      //!MVP: Only USDT to USDC swap is implemented
       if (
         chainId == 84532 &&
         selectedToken == "0xC3726B8054f88FD63F9268c0ab21667083D01414"
       ) {
-        //!Aqui ejecutamos un swap directamten usando el PoolSwapTest Router
+        //!Here we execute a direct swap using the PoolSwapTest Router
         await swapDirectlyUSDT({
           senderAddress: address!,
           tokenToSell: selectedToken,

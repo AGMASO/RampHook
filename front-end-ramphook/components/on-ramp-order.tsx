@@ -52,12 +52,13 @@ export default function OnRampOrder({
     setIsLoading(true);
 
     try {
+      //! MVP: Only USDT onRamp order is implemented
       if (
         chainId == 84532 &&
         selectedToken == "0xC3726B8054f88FD63F9268c0ab21667083D01414"
       ) {
         console.log("Executing onRampOrder for USDT on Base Sepolia");
-        //!Aqui ejecutamos un swap directamten usando el PoolSwapTest Router
+
         await onRampOrder({
           amountToSell: amountUSD,
           receiverAddress: address!,

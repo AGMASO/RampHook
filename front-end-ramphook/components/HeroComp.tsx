@@ -17,27 +17,27 @@ export default function HeroComponent() {
       <div className='flex justify-center items-center p-5 max-w-6xl mx-auto'>
         <h1 className='text-[6vw] text-center md:text-[65px] leading-tight select-none tracking-tightest font-extrabold'>
           <span
-            data-content='Simple to Use.'
+            data-content='Any Token, Instantly.'
             className='relative block before:content-[attr(data-content)] before:w-full before:z-0 before:block before:absolute before:top-0 before:px-2 before:bottom-0 before:left-0 before:text-center before:text-[#050810] before:animate-gradient-background-1'
           >
             <span className='px-2 text-transparent bg-clip-text bg-gradient-to-r from-[#1184B6] to-gradient-1-end animate-gradient-foreground-1'>
-              Simple to Use.
+              Any Token, Instantly.
             </span>
           </span>
           <span
-            data-content='Hard to Abuse.'
+            data-content='Swap Free, When Matched.'
             className='relative block before:content-[attr(data-content)] before:w-full before:z-0 before:block before:absolute before:top-0 before:px-2 before:bottom-0 before:left-0 before:text-center before:text-[#050810] before:animate-gradient-background-2'
           >
             <span className='px-2 text-transparent bg-clip-text bg-gradient-to-r from-[#1184B6] to-gradient-2-end animate-gradient-foreground-2'>
-              Hard to Abuse.
+              Swap Free, When Matched.
             </span>
           </span>
           <span
             className='relative block before:content-[attr(data-content)] before:w-full before:z-0 before:block before:absolute before:top-0 before:px-2 before:bottom-0 before:left-0 before:text-center before:text-[#04060c] before:animate-gradient-background-3'
-            data-content='Never get Hacked.'
+            data-content='LPs Profit More.'
           >
             <span className='px-2 text-transparent bg-clip-text bg-gradient-to-r from-[#1184B6] to-[#D9D9D9] animate-gradient-foreground-3'>
-              Never get Hacked.
+              LPs Profit More.
             </span>
           </span>
         </h1>

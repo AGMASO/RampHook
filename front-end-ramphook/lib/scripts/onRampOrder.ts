@@ -52,9 +52,7 @@ export default async function onRampOrder({
       receiverAddress: receiverAddress,
       desiredToken: desiredToken, // dirección del token deseado
     };
-    // address token,
-    // address hook,
-    // uint256 amount
+
     console.log("Estoy Aqui 2");
     const ownerAddress = await vaultContract.owner();
     console.log("Owner Address:", ownerAddress);
@@ -67,17 +65,6 @@ export default async function onRampOrder({
     console.log(
       `Allowance USDCm del Vault hacia Hook (antes): ${allowanceBefore.toString()}`
     );
-    // try {
-    //   await vaultContract.callStatic.approveHook(
-    //     USDCm,
-    //     ADDRES_HOOK,
-    //     amountToSellFormatted
-    //   );
-    //   console.log("callStatic.approveHook: ¡no revertiría!");
-    // } catch (err) {
-    //   tryDecodeRevert(err, vaultContract.interface);
-    //   throw err; // opcional – re-propaga para el flujo de la app
-    // }
 
     const tx1 = await vaultContract.approveHook(
       USDCm,
@@ -98,59 +85,6 @@ export default async function onRampOrder({
 
     console.log("Transacción completada:", receipt);
     console.log("Hash de la transacción:", receipt.transactionHash);
-
-    // function getCurrencies(tokenToSell: string): [string, string] {
-    //   // Según las reglas de UniswapV4, currency0 siempre debe tener la dirección más pequeña
-    //   if (tokenToSell.toLowerCase() < USDCm.toLowerCase()) {
-    //     return [tokenToSell, USDCm];
-    //   } else {
-    //     return [USDCm, tokenToSell];
-    //   }
-    // }
-    // function tryDecodeRevert(err: any, iface?: Interface) {
-    //   // 1. localizar dónde viene el field con los bytes
-    //   let raw: any =
-    //     err?.error?.data?.data ?? // provider < v6
-    //     err?.error?.data ??
-    //     err?.data ??
-    //     err?.binary ?? // algunas implementaciones
-    //     null;
-
-    //   if (!raw) {
-    //     console.error("⛔️  Sin error.data que decodificar:", err);
-    //     return;
-    //   }
-
-    //   // 2. normalizar a hex-string
-    //   if (raw instanceof Uint8Array) raw = ethers.utils.hexlify(raw);
-    //   if (typeof raw === "number") raw = ethers.utils.hexStripZeros(raw);
-    //   if (typeof raw !== "string") {
-    //     console.error("⛔️  Formato desconocido:", raw);
-    //     return;
-    //   }
-
-    //   console.log("🗒  raw revert data:", raw);
-
-    //   // 3. intentar decodificar con la ABI (custom errors)
-    //   if (iface) {
-    //     try {
-    //       const decoded = iface.parseError(raw);
-    //       console.error("⛔️  Revert ►", decoded.name, decoded.args);
-    //       return;
-    //     } catch {
-    //       /* no era un custom error */
-    //     }
-    //   }
-
-    //   // 4. intentar error estándar Error(string)
-    //   const errorSig = raw.slice(0, 10);
-    //   if (errorSig === "0x08c379a0" /* Error(string) */) {
-    //     const reason = ethers.utils.toUtf8String("0x" + raw.slice(10));
-    //     console.error("⛔️  Revert ► Error(string):", reason);
-    //   } else {
-    //     console.error("⛔️  Revert ► selector:", errorSig);
-    //   }
-    // }
   } catch (error) {
     console.error("Error en el swap:", error);
     throw error;

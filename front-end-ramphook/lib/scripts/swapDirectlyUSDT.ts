@@ -41,11 +41,6 @@ export default async function swapDirectlyUSDT({
 }: swapDirectlyParams) {
   console.log("estoy aqui");
 
-  // const addressPoolSwapTestRouter =
-  //   "0x47e2fD55a1D27CB322533c9b0C2AeAcB36d58c72";
-  // const ADDRES_HOOK = "0xA11C7Faf1b89B9173B5d7137591Ccb51D2F96088";
-  // const USDCm = "0x096b36810d4E9243318f0Cd4C18a2dbd1661470C";
-  // const USDTm = "0xC3726B8054f88FD63F9268c0ab21667083D01414"; // Sepolia USDT address
   const MIN_SQRT_PRICE = 4295128739n + 1n;
   /// @dev The maximum value that can be returned from #getSqrtPriceAtTick. Equivalent to getSqrtPriceAtTick(MAX_TICK)
   const MAX_SQRT_PRICE =
@@ -78,10 +73,6 @@ export default async function swapDirectlyUSDT({
       hooks: ADDRES_HOOK,
     };
 
-    /* 4. Construir SwapParams ------------------------------------------------- *
-     *  Para “exact input” la convención del contrato es amountSpecified < 0.   *
-     *  Se pasa en el signo nativo de int256 (BN negativo).
-     *                     */
     let zeroForOne = currency0 === tokenToSell;
     let amountToSellFormatted = await ethers.utils.parseUnits(amountToSell, 6);
     const params: SwapParams = {
@@ -90,13 +81,11 @@ export default async function swapDirectlyUSDT({
       sqrtPriceLimitX96: MAX_SQRT_PRICE,
     };
 
-    /* 5. Opciones de test ----------------------------------------------------- */
     const testSettings: TestSettings = {
       takeClaims: false,
       settleUsingBurn: false,
     };
 
-    /* 6. hookData (vacío si no usas hooks) ----------------------------------- */
     const hookData = "0x";
     const tx1 = await USDTmContract.approve(
       swapTestContract.address,
@@ -116,7 +105,6 @@ export default async function swapDirectlyUSDT({
     console.log("Hash de la transacción:", receipt.transactionHash);
 
     function getCurrencies(tokenToSell: string): [string, string] {
-      // Según las reglas de UniswapV4, currency0 siempre debe tener la dirección más pequeña
       if (tokenToSell.toLowerCase() < USDCm.toLowerCase()) {
         return [tokenToSell, USDCm];
       } else {

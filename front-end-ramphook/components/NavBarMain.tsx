@@ -60,13 +60,6 @@ export default function NavBarMain() {
             href='/'
             className='flex items-center relative z-40 cursor-pointer'
           >
-            <Image
-              src='/shieldLogo.png'
-              alt='Shield Logo'
-              width={40}
-              height={40}
-              priority
-            />
             <div className='flex items-center'>
               <span className='text-xl pl-1 font-light text-[#1184B6] font-montserrat'>
                 Shield
